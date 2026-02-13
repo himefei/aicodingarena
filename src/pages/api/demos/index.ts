@@ -1,33 +1,5 @@
-/**
- * Cloudflare Pages Function - Demos API
- * GET: list demos (optional ?tab= filter)
- * POST: upload a new demo (code + metadata)
- */
-
-import type { Env } from '../../src/lib/types';
-
-const CORS_HEADERS = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
-function verifyToken(request: Request, adminPassword: string): boolean {
-  const auth = request.headers.get('Authorization');
-  if (!auth?.startsWith('Bearer ')) return false;
-  const token = auth.slice(7);
-  try {
-    const decoded = atob(token);
-    const expectedSuffix = ':' + adminPassword.slice(0, 8);
-    if (!decoded.endsWith(expectedSuffix)) return false;
-    const jsonPart = decoded.slice(0, decoded.length - expectedSuffix.length);
-    const tokenData = JSON.parse(jsonPart);
-    return tokenData.exp > Date.now() && tokenData.admin === true;
-  } catch {
-    return false;
-  }
-}
+import type { APIRoute } from 'astro';
+import { CORS_HEADERS, jsonResponse, errorResponse, verifyToken, getEnv } from '@/lib/api-helpers';
 
 // Pyodide wrapper template for Python demos
 function wrapPythonAsHtml(pythonCode: string): string {
@@ -57,7 +29,7 @@ function wrapPythonAsHtml(pythonCode: string): string {
   </div>
   <div id="output" style="display:none;"></div>
   <div id="canvas-container" style="display:none;"></div>
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"><\/script>
   <script>
     async function main() {
       const loadingEl = document.getElementById('loading');
@@ -71,11 +43,9 @@ function wrapPythonAsHtml(pythonCode: string): string {
         });
 
         progressEl.textContent = 'Installing packages...';
-        // Pre-install common packages
         await pyodide.loadPackage(['micropip']);
         const micropip = pyodide.pyimport('micropip');
 
-        // Redirect stdout to output div
         pyodide.runPython(\`
 import sys
 from io import StringIO
@@ -99,7 +69,6 @@ sys.stderr = OutputCapture()
 
         loadingEl.style.display = 'none';
 
-        // Run user code
         progressEl.textContent = 'Running...';
         await pyodide.runPythonAsync(${JSON.stringify(pythonCode)});
 
@@ -110,15 +79,14 @@ sys.stderr = OutputCapture()
       }
     }
     main();
-  </script>
+  <\/script>
 </body>
 </html>`;
 }
 
-// GET /api/demos?tab=tabId
-export const onRequestGet: PagesFunction<Env> = async (context) => {
-  const { env, request } = context;
-  const url = new URL(request.url);
+export const GET: APIRoute = async (context) => {
+  const env = getEnv(context.locals);
+  const url = new URL(context.request.url);
   const tabId = url.searchParams.get('tab');
 
   try {
@@ -132,22 +100,18 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         'SELECT * FROM demos ORDER BY created_at DESC'
       ).all();
     }
-    return new Response(JSON.stringify(result.results), { headers: CORS_HEADERS });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: 'Failed to fetch demos' }), {
-      status: 500, headers: CORS_HEADERS,
-    });
+    return jsonResponse(result.results);
+  } catch {
+    return errorResponse('Failed to fetch demos');
   }
 };
 
-// POST /api/demos - Upload a new demo
-export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { request, env } = context;
+export const POST: APIRoute = async (context) => {
+  const env = getEnv(context.locals);
+  const { request } = context;
 
   if (!verifyToken(request, env.ADMIN_PASSWORD)) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401, headers: CORS_HEADERS,
-    });
+    return errorResponse('Unauthorized', 401);
   }
 
   try {
@@ -157,13 +121,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       model_name: string;
       demo_type: 'html' | 'python';
       code: string;
-      thumbnail?: string; // base64
+      thumbnail?: string;
     };
 
     const id = `demo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const fileKey = `demos/${id}/index.html`;
 
-    // For Python type, wrap code in Pyodide HTML template
     let htmlContent: string;
     if (body.demo_type === 'python') {
       htmlContent = wrapPythonAsHtml(body.code);
@@ -171,35 +134,33 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       htmlContent = body.code;
     }
 
-    // Upload HTML to R2
     await env.ARENA_FILES.put(fileKey, htmlContent, {
       httpMetadata: { contentType: 'text/html' },
     });
 
-    // Upload thumbnail if provided
     let thumbnailKey: string | null = null;
     if (body.thumbnail) {
       thumbnailKey = `demos/${id}/thumbnail.png`;
-      const thumbData = Uint8Array.from(atob(body.thumbnail.replace(/^data:image\/\w+;base64,/, '')), c => c.charCodeAt(0));
+      const thumbData = Uint8Array.from(
+        atob(body.thumbnail.replace(/^data:image\/\w+;base64,/, '')),
+        c => c.charCodeAt(0)
+      );
       await env.ARENA_FILES.put(thumbnailKey, thumbData, {
         httpMetadata: { contentType: 'image/png' },
       });
     }
 
-    // Store metadata in D1
     await env.ARENA_DB.prepare(
       'INSERT INTO demos (id, tab_id, model_name, model_key, file_r2_key, thumbnail_r2_key, demo_type) VALUES (?, ?, ?, ?, ?, ?, ?)'
     ).bind(id, body.tab_id, body.model_name, body.model_key, fileKey, thumbnailKey, body.demo_type).run();
 
     const demo = await env.ARENA_DB.prepare('SELECT * FROM demos WHERE id = ?').bind(id).first();
-    return new Response(JSON.stringify(demo), { status: 201, headers: CORS_HEADERS });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: 'Failed to upload demo' }), {
-      status: 500, headers: CORS_HEADERS,
-    });
+    return jsonResponse(demo, 201);
+  } catch {
+    return errorResponse('Failed to upload demo');
   }
 };
 
-export const onRequestOptions: PagesFunction = async () => {
+export const OPTIONS: APIRoute = async () => {
   return new Response(null, { headers: CORS_HEADERS });
 };
