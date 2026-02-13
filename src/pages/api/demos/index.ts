@@ -996,7 +996,7 @@ function wrapPythonAsHtml(pythonCode: string): string {
   </div>
   <div id="output" style="display:none;"></div>
   <div id="canvas-container" style="display:none;"></div>
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"><\/script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"><\/script>
   <script>
     async function main() {
       const loadingEl = document.getElementById('loading');
