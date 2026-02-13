@@ -941,8 +941,27 @@ __all__ = [
 
 // Pyodide wrapper template for Python demos
 function wrapPythonAsHtml(pythonCode: string): string {
-  // Detect if code uses pygame
+  // Detect which packages the code actually needs
   const usesPygame = /^(?:import\s+pygame|from\s+pygame)/m.test(pythonCode);
+  const usesNumpy = /^(?:import\s+numpy|from\s+numpy)/m.test(pythonCode);
+
+  // Find non-stdlib, non-shimmed packages that need micropip
+  const skipSet = ['sys','os','io','math','random','json','re','time','datetime','collections','itertools','functools','string','typing','abc','copy','enum','pathlib','dataclasses','operator','contextlib','textwrap','struct','array','bisect','heapq','statistics','decimal','fractions','hashlib','hmac','secrets','base64','html','xml','csv','configparser','argparse','logging','unittest','pdb','traceback','gc','inspect','dis','ast','token','tokenize','codecs','unicodedata','locale','gettext','platform','ctypes','threading','multiprocessing','subprocess','socket','ssl','email','http','urllib','ftplib','smtplib','uuid','tempfile','shutil','glob','fnmatch','pickle','shelve','sqlite3','zipfile','tarfile','gzip','bz2','lzma','zlib','pprint','warnings','weakref','types','importlib','pygame','numpy','np'];
+  const importPattern = /^(?:import|from)\s+(\w+)/gm;
+  const micropipPackages: string[] = [];
+  let match;
+  while ((match = importPattern.exec(pythonCode)) !== null) {
+    const pkg = match[1];
+    if (!skipSet.includes(pkg) && !micropipPackages.includes(pkg)) {
+      micropipPackages.push(pkg);
+    }
+  }
+  const needsMicropip = micropipPackages.length > 0;
+
+  // Build the list of Pyodide built-in packages to load in parallel
+  const builtinPackages: string[] = [];
+  if (usesNumpy) builtinPackages.push('numpy');
+  if (needsMicropip) builtinPackages.push('micropip');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -953,10 +972,13 @@ function wrapPythonAsHtml(pythonCode: string): string {
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #1a1a2e; color: #e0e0e0; font-family: 'Courier New', monospace; min-height: 100vh; }
-    #loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 16px; }
+    #loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 20px; }
     #loading .spinner { width: 48px; height: 48px; border: 3px solid #333; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    #loading .progress { font-size: 14px; color: #94a3b8; }
+    .progress { font-size: 14px; color: #94a3b8; text-align: center; }
+    .progress-bar { width: 200px; height: 4px; background: #333; border-radius: 2px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 2px; transition: width 0.3s; width: 0%; }
+    .timer { font-size: 12px; color: #64748b; margin-top: -8px; }
     #output { padding: 20px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; }
     #canvas-container { display: flex; justify-content: center; padding: 20px; }
     canvas { max-width: 100%; }
@@ -967,6 +989,8 @@ function wrapPythonAsHtml(pythonCode: string): string {
   <div id="loading">
     <div class="spinner"></div>
     <div class="progress">Loading Python runtime...</div>
+    <div class="progress-bar"><div class="progress-bar-fill" id="pbar"></div></div>
+    <div class="timer" id="timer"></div>
   </div>
   <div id="output" style="display:none;"></div>
   <div id="canvas-container" style="display:none;"></div>
@@ -975,57 +999,42 @@ function wrapPythonAsHtml(pythonCode: string): string {
     async function main() {
       const loadingEl = document.getElementById('loading');
       const progressEl = loadingEl.querySelector('.progress');
+      const pbar = document.getElementById('pbar');
+      const timerEl = document.getElementById('timer');
       const outputEl = document.getElementById('output');
+      const t0 = performance.now();
+      const updateTimer = () => { timerEl.textContent = ((performance.now()-t0)/1000).toFixed(1) + 's'; };
+      const timerInterval = setInterval(updateTimer, 100);
+      const setProgress = (pct, msg) => { pbar.style.width = pct + '%'; progressEl.textContent = msg; updateTimer(); };
 
       try {
-        progressEl.textContent = 'Initializing Pyodide...';
+        // Step 1: Load Pyodide core (heaviest step)
+        setProgress(10, '⏳ Loading Python runtime (first load may take ~5s)...');
         const pyodide = await loadPyodide({
           indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.1/full/'
         });
+        setProgress(40, '✓ Python runtime ready');
 
-        progressEl.textContent = 'Installing packages...';
-        await pyodide.loadPackage(['micropip']);
+        ${builtinPackages.length > 0 ? `// Step 2: Load built-in packages in ONE batch (parallel download)
+        setProgress(50, '📦 Loading packages: ${builtinPackages.join(', ')}...');
+        await pyodide.loadPackage(${JSON.stringify(builtinPackages)});
+        setProgress(70, '✓ Packages loaded');` : '// No extra packages needed\n        setProgress(70, \'✓ Ready\');'}
+
+        ${needsMicropip ? `// Step 2b: Install pip-only packages
         const micropip = pyodide.pyimport('micropip');
+        ${micropipPackages.map((pkg, i) => `setProgress(${70 + Math.round((i+1)/(micropipPackages.length+1)*15)}, '📦 pip install ${pkg}...');\n        try { await micropip.install('${pkg}'); } catch(e) { console.warn('${pkg}:', e); }`).join('\n        ')}` : ''}
 
-        // Auto-detect and install required packages
-        const code = ${JSON.stringify(pythonCode)};
-        const importPattern = /^(?:import|from)\\s+(\\w+)/gm;
-        const detectedPackages = new Set();
-        let m;
-        while ((m = importPattern.exec(code)) !== null) {
-          const pkg = m[1];
-          // Skip stdlib modules and browser-shimmed modules
-          const skip = new Set(['sys','os','io','math','random','json','re','time','datetime','collections','itertools','functools','string','typing','abc','copy','enum','pathlib','dataclasses','operator','contextlib','textwrap','struct','array','bisect','heapq','statistics','decimal','fractions','hashlib','hmac','secrets','base64','html','xml','csv','configparser','argparse','logging','unittest','pdb','traceback','gc','inspect','dis','ast','token','tokenize','codecs','unicodedata','locale','gettext','platform','ctypes','threading','multiprocessing','subprocess','socket','ssl','email','http','urllib','ftplib','smtplib','uuid','tempfile','shutil','glob','fnmatch','pickle','shelve','sqlite3','zipfile','tarfile','gzip','bz2','lzma','zlib','pprint','warnings','weakref','types','importlib','pygame']);
-          if (!skip.has(pkg)) {
-            detectedPackages.add(pkg);
-          }
-        }
-
-        for (const pkg of detectedPackages) {
-          try {
-            progressEl.textContent = 'Installing ' + pkg + '...';
-            try {
-              await pyodide.loadPackage([pkg]);
-            } catch {
-              await micropip.install(pkg);
-            }
-          } catch (e) {
-            console.warn('Failed to install ' + pkg + ':', e);
-          }
-        }
-
-        ${usesPygame ? `// Install pygame browser shim
-        progressEl.textContent = 'Setting up pygame...';
+        ${usesPygame ? `// Step 3: Install pygame browser shim (instant, no download)
+        setProgress(85, '🎮 Setting up pygame shim...');
         const pygameShim = ${JSON.stringify(PYGAME_SHIM)};
-        pyodide.FS.mkdir('/lib/python3.11/site-packages/pygame');
+        try { pyodide.FS.mkdir('/lib/python3.11/site-packages/pygame'); } catch(e) {}
         pyodide.FS.writeFile('/lib/python3.11/site-packages/pygame/__init__.py', pygameShim);
-        pyodide.FS.writeFile('/lib/python3.11/site-packages/pygame/locals.py',
-          'from pygame import *\\n'
-        );` : ''}
+        pyodide.FS.writeFile('/lib/python3.11/site-packages/pygame/locals.py', 'from pygame import *\\n');` : ''}
 
+        // Step 4: Setup stdout/stderr capture
+        setProgress(90, '🔧 Setting up environment...');
         pyodide.runPython(\`
 import sys
-from io import StringIO
 
 class OutputCapture:
     def __init__(self):
@@ -1045,12 +1054,16 @@ sys.stdout = OutputCapture()
 sys.stderr = OutputCapture()
 \`);
 
+        // Step 5: Run user code
+        setProgress(95, '🚀 Running code...');
         loadingEl.style.display = 'none';
+        clearInterval(timerInterval);
 
-        progressEl.textContent = 'Running...';
+        const code = ${JSON.stringify(pythonCode)};
         await pyodide.runPythonAsync(code);
 
       } catch (error) {
+        clearInterval(timerInterval);
         loadingEl.style.display = 'none';
         outputEl.style.display = 'block';
         outputEl.innerHTML = '<div class="error">Error: ' + error.message + '<\\/div>';

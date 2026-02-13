@@ -23,6 +23,10 @@ const { title = 'AI Coding Arena', description = 'AI代码能力对比平台 | A
       rel="stylesheet"
     />
     <title>{title}</title>
+    <!-- Preload Pyodide files so Python demos start faster -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="prefetch" href="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js" as="script" crossorigin />
+    <link rel="prefetch" href="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.asm.wasm" as="fetch" crossorigin />
     <script is:inline>
       // Prevent FOUC: apply theme before first paint
       (function() {
@@ -30,6 +34,12 @@ const { title = 'AI Coding Arena', description = 'AI代码能力对比平台 | A
         const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         if (isDark) document.documentElement.classList.add('dark');
       })();
+    </script>
+    <!-- Register Service Worker to cache Pyodide files for instant subsequent loads -->
+    <script is:inline>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
     </script>
   </head>
   <body class="min-h-screen">
