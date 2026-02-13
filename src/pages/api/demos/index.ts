@@ -285,7 +285,7 @@ class _EventModule:
     def __init__(self):
         self._queue = []
         self._frame_count = 0
-        self._max_frames = 600
+        self._max_frames = 36000
     def get(self, *args):
         self._frame_count += 1
         events = list(self._queue)
@@ -364,6 +364,8 @@ class _DisplayModule:
     def flip(self):
         if self._ctx and self._surface:
             self._ctx.drawImage(self._surface._canvas, 0, 0)
+        # Yield to browser so it can actually paint the frame
+        _time_mod.sleep(0.001)
     def update(self, *args):
         self.flip()
     def set_caption(self, title, icontitle=''):
@@ -581,9 +583,12 @@ class _TimeModule:
     def get_ticks(self):
         return int(_window.performance.now())
     def delay(self, ms):
-        pass
+        if ms > 0:
+            _time_mod.sleep(ms / 1000)
     def wait(self, ms):
-        pass
+        if ms > 0:
+            _time_mod.sleep(ms / 1000)
+        return ms
     def set_timer(self, event_type, millis, loops=0):
         pass
     def Clock(self):
@@ -596,9 +601,15 @@ class _Clock:
     def tick(self, fps=0):
         now = _window.performance.now()
         self._dt = now - self._last
-        self._last = now
-        if fps > 0 and self._dt < 1000 / fps:
-            pass  # can't truly delay in sync mode
+        if fps > 0:
+            target_ms = 1000.0 / fps
+            remaining = target_ms - self._dt
+            if remaining > 1:
+                # time.sleep is patched by Pyodide to yield to the browser event loop
+                # This is critical: without this, the while-loop blocks the main thread
+                # and the browser never gets to paint frames
+                _time_mod.sleep(remaining / 1000)
+        self._last = _window.performance.now()
         return self._dt
     def get_time(self):
         return self._dt
