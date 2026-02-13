@@ -43,17 +43,10 @@ export function AdminLoginDialog({ onClose, onSuccess }: AdminLoginDialogProps) 
         }
         setError(data.message || t('incorrectPassword'));
       }
-    } catch (err) {
-      // Dev fallback
-      if (password === 'dev-admin-123') {
-        sessionStorage.setItem('admin-token', 'dev-token');
-        sessionStorage.setItem('admin-token-expiry', String(Date.now() + 24 * 60 * 60 * 1000));
-        onSuccess();
-        onClose();
-        setPassword('');
-      } else {
-        setError(t('incorrectPassword'));
-      }
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      console.error('Login error:', msg);
+      setError(`Error: ${msg}`);
     }
 
     setIsLoading(false);
