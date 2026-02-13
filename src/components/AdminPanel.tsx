@@ -4,10 +4,11 @@ import { useLanguage } from '@/lib/language';
 import {
   fetchTabs, createTab, updateTab, deleteTab as apiDeleteTab,
   fetchDemos, deleteDemo as apiDeleteDemo, uploadDemo,
-  fetchModels, createModel,
+  fetchModels, createModel, deleteModel as apiDeleteModel,
   type Tab, type Demo, type ModelRegistryEntry, type UploadPayload,
   logoutAdmin,
 } from '@/lib/api';
+import { AVAILABLE_LOGOS } from '@/lib/models';
 import { clearKonamiActivation } from '@/hooks/use-konami-code';
 import {
   Plus, Trash, PencilSimple, Upload, SignOut, Folder,
@@ -40,7 +41,7 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
 
   // New model form
-  const [newModel, setNewModel] = useState({ key: '', name: '', logo_filename: 'default.svg', color: '#6366f1' });
+  const [newModel, setNewModel] = useState({ key: '', name: '', logo_filename: AVAILABLE_LOGOS[0], color: '#6366f1' });
 
   useEffect(() => {
     loadData();
@@ -160,10 +161,21 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
         color: newModel.color,
       });
       toast.success('Model added');
-      setNewModel({ key: '', name: '', logo_filename: 'default.svg', color: '#6366f1' });
+      setNewModel({ key: '', name: '', logo_filename: AVAILABLE_LOGOS[0], color: '#6366f1' });
       loadData();
     } catch (e) {
       toast.error('Failed to add model');
+    }
+  };
+
+  const handleDeleteModel = async (key: string) => {
+    if (!confirm(t('confirmDelete'))) return;
+    try {
+      await apiDeleteModel(key);
+      toast.success('Model deleted');
+      loadData();
+    } catch (e) {
+      toast.error('Failed to delete model');
     }
   };
 
@@ -458,9 +470,10 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
           {/* ===== MODELS SECTION ===== */}
           {activeSection === 'models' && (
             <div className="space-y-4">
+              {/* Add model form */}
               <div className="rounded-2xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('addModel')}</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   <input
                     value={newModel.key}
                     onChange={(e) => setNewModel({ ...newModel, key: e.target.value })}
@@ -475,43 +488,58 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                     className="px-3 py-2.5 rounded-xl text-sm outline-none"
                     style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   />
-                  <input
-                    value={newModel.logo_filename}
-                    onChange={(e) => setNewModel({ ...newModel, logo_filename: e.target.value })}
-                    placeholder="logo.svg"
-                    className="px-3 py-2.5 rounded-xl text-sm outline-none"
-                    style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                  />
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={newModel.color}
-                      onChange={(e) => setNewModel({ ...newModel, color: e.target.value })}
-                      className="w-10 h-10 rounded-lg cursor-pointer border-0"
-                    />
-                    <button
-                      onClick={handleAddModel}
-                      disabled={!newModel.key || !newModel.name}
-                      className="flex-1 rounded-xl text-sm font-medium text-white disabled:opacity-40"
-                      style={{ background: 'var(--color-primary)' }}
+                  {/* SVG Logo picker */}
+                  <div className="relative">
+                    <select
+                      value={newModel.logo_filename}
+                      onChange={(e) => setNewModel({ ...newModel, logo_filename: e.target.value })}
+                      className="w-full h-full px-3 py-2.5 pl-9 rounded-xl text-sm outline-none appearance-none cursor-pointer"
+                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                     >
-                      <Plus size={16} className="mx-auto" />
-                    </button>
+                      {AVAILABLE_LOGOS.map(logo => (
+                        <option key={logo} value={logo}>{logo.replace('.svg', '')}</option>
+                      ))}
+                    </select>
+                    <img
+                      src={`/logos/${newModel.logo_filename}`}
+                      alt=""
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 object-contain pointer-events-none"
+                    />
+                    <CaretDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                   </div>
+                  {/* Color picker */}
+                  <input
+                    type="color"
+                    value={newModel.color}
+                    onChange={(e) => setNewModel({ ...newModel, color: e.target.value })}
+                    className="w-full h-full rounded-xl cursor-pointer border-0"
+                    style={{ minHeight: '42px' }}
+                  />
+                  {/* Add button */}
+                  <button
+                    onClick={handleAddModel}
+                    disabled={!newModel.key || !newModel.name}
+                    className="flex items-center justify-center gap-2 rounded-xl text-sm font-medium text-white disabled:opacity-40 transition-all"
+                    style={{ background: 'var(--color-primary)', minHeight: '42px' }}
+                  >
+                    <Plus size={16} />
+                    {t('addModel')}
+                  </button>
                 </div>
               </div>
 
+              {/* Model list */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {models.map((model) => (
                   <motion.div
                     key={model.key}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex items-center gap-3 p-3 rounded-xl"
+                    className="flex items-center gap-3 p-3 rounded-xl group"
                     style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
                   >
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
                       style={{ background: `${model.color}15`, border: `1px solid ${model.color}30` }}
                     >
                       <img src={`/logos/${model.logo_filename}`} alt="" className="w-5 h-5 object-contain"
@@ -521,7 +549,13 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                       <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{model.name}</div>
                       <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{model.key}</div>
                     </div>
-                    <div className="w-4 h-4 rounded-full" style={{ background: model.color }} />
+                    <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: model.color }} />
+                    <button
+                      onClick={() => handleDeleteModel(model.key)}
+                      className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 text-red-400 hover:bg-red-400/10 flex-shrink-0"
+                    >
+                      <Trash size={14} />
+                    </button>
                   </motion.div>
                 ))}
               </div>

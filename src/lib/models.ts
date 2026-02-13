@@ -1,4 +1,4 @@
-/** Predefined AI model registry with logos and brand colors */
+/** AI model registry with logos and brand colors */
 export interface ModelDef {
   key: string;
   name: string;
@@ -6,26 +6,35 @@ export interface ModelDef {
   color: string;
 }
 
+/** Available SVG logo files in public/logos/ */
+export const AVAILABLE_LOGOS: string[] = [
+  'anthropic.svg',
+  'cohere.svg',
+  'deepseek.svg',
+  'gemini.svg',
+  'glm.svg',
+  'grok.svg',
+  'huggingface.svg',
+  'llama.svg',
+  'minimax.svg',
+  'mistral.svg',
+  'openai.svg',
+  'qwen.svg',
+];
+
 export const PREDEFINED_MODELS: ModelDef[] = [
-  { key: 'chatgpt', name: 'ChatGPT', logoFilename: 'chatgpt.svg', color: '#10a37f' },
-  { key: 'gpt4o', name: 'GPT-4o', logoFilename: 'chatgpt.svg', color: '#10a37f' },
-  { key: 'o1', name: 'o1', logoFilename: 'chatgpt.svg', color: '#10a37f' },
-  { key: 'o3', name: 'o3', logoFilename: 'chatgpt.svg', color: '#10a37f' },
-  { key: 'claude', name: 'Claude', logoFilename: 'claude.svg', color: '#d97706' },
-  { key: 'claude-sonnet', name: 'Claude Sonnet', logoFilename: 'claude.svg', color: '#d97706' },
-  { key: 'claude-opus', name: 'Claude Opus', logoFilename: 'claude.svg', color: '#d97706' },
+  { key: 'openai', name: 'OpenAI', logoFilename: 'openai.svg', color: '#10a37f' },
+  { key: 'anthropic', name: 'Anthropic', logoFilename: 'anthropic.svg', color: '#d97706' },
   { key: 'gemini', name: 'Gemini', logoFilename: 'gemini.svg', color: '#4285f4' },
-  { key: 'gemini-pro', name: 'Gemini Pro', logoFilename: 'gemini.svg', color: '#4285f4' },
-  { key: 'gemini-flash', name: 'Gemini Flash', logoFilename: 'gemini.svg', color: '#4285f4' },
   { key: 'deepseek', name: 'DeepSeek', logoFilename: 'deepseek.svg', color: '#4d6bfe' },
-  { key: 'deepseek-v3', name: 'DeepSeek V3', logoFilename: 'deepseek.svg', color: '#4d6bfe' },
-  { key: 'deepseek-r1', name: 'DeepSeek R1', logoFilename: 'deepseek.svg', color: '#4d6bfe' },
-  { key: 'llama', name: 'Llama', logoFilename: 'llama.svg', color: '#0668e1' },
   { key: 'grok', name: 'Grok', logoFilename: 'grok.svg', color: '#1d9bf0' },
+  { key: 'llama', name: 'Llama', logoFilename: 'llama.svg', color: '#0668e1' },
   { key: 'qwen', name: 'Qwen', logoFilename: 'qwen.svg', color: '#6c3baa' },
   { key: 'mistral', name: 'Mistral', logoFilename: 'mistral.svg', color: '#f97316' },
-  { key: 'copilot', name: 'GitHub Copilot', logoFilename: 'copilot.svg', color: '#000000' },
-  { key: 'cursor', name: 'Cursor', logoFilename: 'cursor.svg', color: '#7c3aed' },
+  { key: 'glm', name: 'GLM', logoFilename: 'glm.svg', color: '#3b82f6' },
+  { key: 'cohere', name: 'Cohere', logoFilename: 'cohere.svg', color: '#39594d' },
+  { key: 'huggingface', name: 'Hugging Face', logoFilename: 'huggingface.svg', color: '#ffbd45' },
+  { key: 'minimax', name: 'MiniMax', logoFilename: 'minimax.svg', color: '#6366f1' },
 ];
 
 export function getModelByKey(key: string): ModelDef | undefined {

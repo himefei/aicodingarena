@@ -44,24 +44,17 @@ INSERT OR IGNORE INTO tabs (id, name_cn, name_en, slug, sort_order) VALUES
   ('tab-phone-os', '手机操作系统模拟器', 'Phone OS Simulator', 'phone-os-simulator', 1),
   ('tab-hex-balls', 'Python六边形小球', 'Python Hexagonal Balls', 'python-hex-balls', 2);
 
--- Seed: predefined AI models
+-- Seed: AI models (based on available SVG logos)
 INSERT OR IGNORE INTO models_registry (key, name, logo_filename, color) VALUES
-  ('chatgpt', 'ChatGPT', 'chatgpt.svg', '#10a37f'),
-  ('gpt4o', 'GPT-4o', 'chatgpt.svg', '#10a37f'),
-  ('o1', 'o1', 'chatgpt.svg', '#10a37f'),
-  ('o3', 'o3', 'chatgpt.svg', '#10a37f'),
-  ('claude', 'Claude', 'claude.svg', '#d97706'),
-  ('claude-sonnet', 'Claude Sonnet', 'claude.svg', '#d97706'),
-  ('claude-opus', 'Claude Opus', 'claude.svg', '#d97706'),
+  ('openai', 'OpenAI', 'openai.svg', '#10a37f'),
+  ('anthropic', 'Anthropic', 'anthropic.svg', '#d97706'),
   ('gemini', 'Gemini', 'gemini.svg', '#4285f4'),
-  ('gemini-pro', 'Gemini Pro', 'gemini.svg', '#4285f4'),
-  ('gemini-flash', 'Gemini Flash', 'gemini.svg', '#4285f4'),
   ('deepseek', 'DeepSeek', 'deepseek.svg', '#4d6bfe'),
-  ('deepseek-v3', 'DeepSeek V3', 'deepseek.svg', '#4d6bfe'),
-  ('deepseek-r1', 'DeepSeek R1', 'deepseek.svg', '#4d6bfe'),
-  ('llama', 'Llama', 'llama.svg', '#0668e1'),
   ('grok', 'Grok', 'grok.svg', '#1d9bf0'),
+  ('llama', 'Llama', 'llama.svg', '#0668e1'),
   ('qwen', 'Qwen', 'qwen.svg', '#6c3baa'),
   ('mistral', 'Mistral', 'mistral.svg', '#f97316'),
-  ('copilot', 'GitHub Copilot', 'copilot.svg', '#000000'),
-  ('cursor', 'Cursor', 'cursor.svg', '#7c3aed');
+  ('glm', 'GLM', 'glm.svg', '#3b82f6'),
+  ('cohere', 'Cohere', 'cohere.svg', '#39594d'),
+  ('huggingface', 'Hugging Face', 'huggingface.svg', '#ffbd45'),
+  ('minimax', 'MiniMax', 'minimax.svg', '#6366f1');
