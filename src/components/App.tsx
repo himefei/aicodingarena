@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LanguageProvider, useLanguage } from '@/lib/language';
 import { ThemeProvider } from '@/lib/theme';
-import { fetchTabs, fetchDemos, fetchModels, isAuthenticated, verifyToken, type Tab, type Demo } from '@/lib/api';
+import { fetchTabs, fetchDemos, fetchModels, fetchBrands, isAuthenticated, verifyToken, type Tab, type Demo } from '@/lib/api';
 import { useKonamiCode, isKonamiActivated } from '@/hooks/use-konami-code';
-import { setRuntimeModels } from '@/lib/models';
+import { setRuntimeModels, setRuntimeBrands } from '@/lib/models';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { TabBar } from '@/components/TabBar';
@@ -51,12 +51,14 @@ function AppInner() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [tabsData, modelsData] = await Promise.all([
+      const [tabsData, modelsData, brandsData] = await Promise.all([
         fetchTabs(),
         fetchModels(),
+        fetchBrands(),
       ]);
       setTabs(tabsData);
       setRuntimeModels(modelsData);
+      setRuntimeBrands(brandsData);
       if (tabsData.length > 0 && !activeTabId) {
         setActiveTabId(tabsData[0].id);
       }

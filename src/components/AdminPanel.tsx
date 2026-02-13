@@ -5,14 +5,15 @@ import {
   fetchTabs, createTab, updateTab, deleteTab as apiDeleteTab,
   fetchDemos, deleteDemo as apiDeleteDemo, uploadDemo, updateDemo,
   fetchModels, createModel, deleteModel as apiDeleteModel,
-  type Tab, type Demo, type ModelRegistryEntry, type UploadPayload,
+  fetchBrands, createBrand, deleteBrand as apiDeleteBrand,
+  fetchLogos, uploadLogo, deleteLogo as apiDeleteLogo,
+  type Tab, type Demo, type ModelRegistryEntry, type Brand, type UploadPayload,
   logoutAdmin,
 } from '@/lib/api';
-import { AVAILABLE_LOGOS } from '@/lib/models';
 import { clearKonamiActivation } from '@/hooks/use-konami-code';
 import {
   Plus, Trash, PencilSimple, Upload, SignOut, Folder,
-  Code, Robot, CaretDown, X, Check,
+  Code, Robot, CaretDown, X, Check, Image,
 } from '@phosphor-icons/react';
 import { Toaster, toast } from 'sonner';
 
@@ -25,6 +26,8 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [demos, setDemos] = useState<Demo[]>([]);
   const [models, setModels] = useState<ModelRegistryEntry[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [availableLogos, setAvailableLogos] = useState<string[]>([]);
   const [activeSection, setActiveSection] = useState<'tabs' | 'demos' | 'upload' | 'models'>('upload');
   const [loading, setLoading] = useState(true);
 
@@ -48,8 +51,17 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
   const [editDemoCode, setEditDemoCode] = useState('');
   const [editingSaving, setEditingSaving] = useState(false);
 
-  // New model form
-  const [newModel, setNewModel] = useState({ key: '', name: '', logo_filename: AVAILABLE_LOGOS[0], color: '#6366f1' });
+  // SVG upload form
+  const [svgFileContent, setSvgFileContent] = useState('');
+  const [svgName, setSvgName] = useState('');
+
+  // Brand form
+  const [newBrandName, setNewBrandName] = useState('');
+  const [newBrandLogo, setNewBrandLogo] = useState('');
+
+  // Model form
+  const [newModelBrand, setNewModelBrand] = useState('');
+  const [newModelName, setNewModelName] = useState('');
 
   useEffect(() => {
     loadData();
@@ -58,12 +70,14 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [tabsData, demosData, modelsData] = await Promise.all([
-        fetchTabs(), fetchDemos(), fetchModels(),
+      const [tabsData, demosData, modelsData, brandsData, logosData] = await Promise.all([
+        fetchTabs(), fetchDemos(), fetchModels(), fetchBrands(), fetchLogos(),
       ]);
       setTabs(tabsData);
       setDemos(demosData);
       setModels(modelsData);
+      setBrands(brandsData);
+      setAvailableLogos(logosData);
       if (tabsData.length > 0 && !uploadTabId) {
         setUploadTabId(tabsData[0].id);
       }
@@ -205,19 +219,14 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
 
   // ---- Model CRUD ----
   const handleAddModel = async () => {
-    if (!newModel.key || !newModel.name) return;
+    if (!newModelBrand || !newModelName.trim()) return;
     try {
-      await createModel({
-        key: newModel.key,
-        name: newModel.name,
-        logo_filename: newModel.logo_filename,
-        color: newModel.color,
-      });
+      await createModel({ brand_key: newModelBrand, name: newModelName.trim() });
       toast.success('Model added');
-      setNewModel({ key: '', name: '', logo_filename: AVAILABLE_LOGOS[0], color: '#6366f1' });
+      setNewModelName('');
       loadData();
-    } catch (e) {
-      toast.error('Failed to add model');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to add model');
     }
   };
 
@@ -229,6 +238,71 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
       loadData();
     } catch (e) {
       toast.error('Failed to delete model');
+    }
+  };
+
+  // ---- SVG Logo CRUD ----
+  const handleSvgFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setSvgFileContent(ev.target?.result as string);
+      // Auto-fill name from filename if empty
+      if (!svgName) {
+        setSvgName(file.name.replace(/\.svg$/i, ''));
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleUploadSvg = async () => {
+    if (!svgFileContent || !svgName.trim()) return;
+    try {
+      await uploadLogo({ name: svgName.trim(), content: svgFileContent });
+      toast.success('SVG uploaded');
+      setSvgFileContent('');
+      setSvgName('');
+      loadData();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to upload SVG');
+    }
+  };
+
+  const handleDeleteSvg = async (name: string) => {
+    if (!confirm(t('confirmDelete'))) return;
+    try {
+      await apiDeleteLogo(name);
+      toast.success('SVG deleted');
+      loadData();
+    } catch (e) {
+      toast.error('Failed to delete SVG');
+    }
+  };
+
+  // ---- Brand CRUD ----
+  const handleAddBrand = async () => {
+    if (!newBrandName.trim() || !newBrandLogo) return;
+    const key = newBrandName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    try {
+      await createBrand({ key, name: newBrandName.trim(), logo_filename: newBrandLogo });
+      toast.success('Brand added');
+      setNewBrandName('');
+      setNewBrandLogo('');
+      loadData();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to add brand');
+    }
+  };
+
+  const handleDeleteBrand = async (key: string) => {
+    if (!confirm(t('confirmDelete'))) return;
+    try {
+      await apiDeleteBrand(key);
+      toast.success('Brand deleted');
+      loadData();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to delete brand');
     }
   };
 
@@ -331,9 +405,25 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                     style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   >
                     <option value="">{t('selectModel')}...</option>
-                    {models.map(m => (
-                      <option key={m.key} value={m.key}>{m.name}</option>
-                    ))}
+                    {brands.map(brand => {
+                      const brandModels = models.filter(m => m.brand_key === brand.key);
+                      if (brandModels.length === 0) return null;
+                      return (
+                        <optgroup key={brand.key} label={brand.name}>
+                          {brandModels.map(m => (
+                            <option key={m.key} value={m.key}>{m.name}</option>
+                          ))}
+                        </optgroup>
+                      );
+                    })}
+                    {/* Models without brand */}
+                    {models.filter(m => !m.brand_key || !brands.find(b => b.key === m.brand_key)).length > 0 && (
+                      <optgroup label="Other">
+                        {models.filter(m => !m.brand_key || !brands.find(b => b.key === m.brand_key)).map(m => (
+                          <option key={m.key} value={m.key}>{m.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
 
@@ -640,87 +730,225 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
 
           {/* ===== MODELS SECTION ===== */}
           {activeSection === 'models' && (
-            <div className="space-y-4">
-              {/* Add model form */}
+            <div className="space-y-6">
+
+              {/* ---- 1. Upload SVG ---- */}
               <div className="rounded-2xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('addModel')}</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <Image size={16} />
+                  {t('uploadSvg')}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <label
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm cursor-pointer transition-colors"
+                    style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: svgFileContent ? 'var(--color-primary)' : 'var(--text-muted)' }}
+                  >
+                    <Upload size={14} />
+                    {svgFileContent ? 'SVG loaded' : 'Choose SVG file'}
+                    <input type="file" accept=".svg" className="hidden" onChange={handleSvgFileSelect} />
+                  </label>
                   <input
-                    value={newModel.key}
-                    onChange={(e) => setNewModel({ ...newModel, key: e.target.value })}
-                    placeholder={t('modelKey')}
+                    value={svgName}
+                    onChange={(e) => setSvgName(e.target.value)}
+                    placeholder={t('svgName')}
                     className="px-3 py-2.5 rounded-xl text-sm outline-none"
                     style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   />
+                  <button
+                    onClick={handleUploadSvg}
+                    disabled={!svgFileContent || !svgName.trim()}
+                    className="flex items-center justify-center gap-2 rounded-xl text-sm font-medium text-white disabled:opacity-40 transition-all"
+                    style={{ background: 'var(--color-primary)', minHeight: '42px' }}
+                  >
+                    <Plus size={14} />
+                    {t('addSvg')}
+                  </button>
+                </div>
+
+                {/* SVG icons grid */}
+                {availableLogos.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {availableLogos.map((logoName) => (
+                      <div
+                        key={logoName}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs group"
+                        style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
+                      >
+                        <img src={`/api/logo/${logoName}`} alt="" className="w-4 h-4 object-contain"
+                          onError={(e) => { (e.target as HTMLImageElement).src = '/logos/default.svg'; }} />
+                        <span style={{ color: 'var(--text-muted)' }}>{logoName.replace('.svg', '')}</span>
+                        <button
+                          onClick={() => handleDeleteSvg(logoName)}
+                          className="p-0.5 rounded transition-all opacity-0 group-hover:opacity-100 text-red-400 hover:bg-red-400/10"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ---- 2. Brand Management ---- */}
+              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <Robot size={16} />
+                  {t('brandManagement')}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <input
-                    value={newModel.name}
-                    onChange={(e) => setNewModel({ ...newModel, name: e.target.value })}
+                    value={newBrandName}
+                    onChange={(e) => setNewBrandName(e.target.value)}
+                    placeholder={t('brandName')}
+                    className="px-3 py-2.5 rounded-xl text-sm outline-none"
+                    style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  />
+                  {/* SVG picker */}
+                  <div className="relative">
+                    <select
+                      value={newBrandLogo}
+                      onChange={(e) => setNewBrandLogo(e.target.value)}
+                      className="w-full h-full px-3 py-2.5 pl-9 rounded-xl text-sm outline-none appearance-none cursor-pointer"
+                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                    >
+                      <option value="">{t('selectSvg')}...</option>
+                      {availableLogos.map(logo => (
+                        <option key={logo} value={logo}>{logo.replace('.svg', '')}</option>
+                      ))}
+                    </select>
+                    {newBrandLogo && (
+                      <img
+                        src={`/api/logo/${newBrandLogo}`}
+                        alt=""
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 object-contain pointer-events-none"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
+                    <CaretDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                  </div>
+                  <button
+                    onClick={handleAddBrand}
+                    disabled={!newBrandName.trim() || !newBrandLogo}
+                    className="flex items-center justify-center gap-2 rounded-xl text-sm font-medium text-white disabled:opacity-40 transition-all"
+                    style={{ background: 'var(--color-primary)', minHeight: '42px' }}
+                  >
+                    <Plus size={14} />
+                    {t('addBrand')}
+                  </button>
+                </div>
+
+                {/* Brand list */}
+                {brands.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                    {brands.map((brand) => (
+                      <div
+                        key={brand.key}
+                        className="flex items-center gap-3 p-2.5 rounded-xl group"
+                        style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
+                      >
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
+                          style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
+                          <img src={`/api/logo/${brand.logo_filename}`} alt="" className="w-4 h-4 object-contain"
+                            onError={(e) => { (e.target as HTMLImageElement).src = '/logos/default.svg'; }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{brand.name}</div>
+                          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{brand.key}</div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteBrand(brand.key)}
+                          className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 text-red-400 hover:bg-red-400/10 flex-shrink-0"
+                        >
+                          <Trash size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ---- 3. Model Management ---- */}
+              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <Code size={16} />
+                  {t('addModel')}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* Brand selector */}
+                  <div className="relative">
+                    <select
+                      value={newModelBrand}
+                      onChange={(e) => setNewModelBrand(e.target.value)}
+                      className="w-full h-full px-3 py-2.5 pl-9 rounded-xl text-sm outline-none appearance-none cursor-pointer"
+                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                    >
+                      <option value="">{t('selectBrand')}...</option>
+                      {brands.map(brand => (
+                        <option key={brand.key} value={brand.key}>{brand.name}</option>
+                      ))}
+                    </select>
+                    {newModelBrand && (
+                      <img
+                        src={`/api/logo/${brands.find(b => b.key === newModelBrand)?.logo_filename || 'default.svg'}`}
+                        alt=""
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 object-contain pointer-events-none"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
+                    <CaretDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                  </div>
+                  <input
+                    value={newModelName}
+                    onChange={(e) => setNewModelName(e.target.value)}
                     placeholder={t('modelName')}
                     className="px-3 py-2.5 rounded-xl text-sm outline-none"
                     style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   />
-                  {/* SVG Logo picker */}
-                  <div className="relative">
-                    <select
-                      value={newModel.logo_filename}
-                      onChange={(e) => setNewModel({ ...newModel, logo_filename: e.target.value })}
-                      className="w-full h-full px-3 py-2.5 pl-9 rounded-xl text-sm outline-none appearance-none cursor-pointer"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                    >
-                      {AVAILABLE_LOGOS.map(logo => (
-                        <option key={logo} value={logo}>{logo.replace('.svg', '')}</option>
-                      ))}
-                    </select>
-                    <img
-                      src={`/logos/${newModel.logo_filename}`}
-                      alt=""
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 object-contain pointer-events-none"
-                    />
-                    <CaretDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                  </div>
-                  {/* Add button */}
                   <button
                     onClick={handleAddModel}
-                    disabled={!newModel.key || !newModel.name}
+                    disabled={!newModelBrand || !newModelName.trim()}
                     className="flex items-center justify-center gap-2 rounded-xl text-sm font-medium text-white disabled:opacity-40 transition-all"
                     style={{ background: 'var(--color-primary)', minHeight: '42px' }}
                   >
-                    <Plus size={16} />
+                    <Plus size={14} />
                     {t('addModel')}
                   </button>
                 </div>
+
+                {/* Model list */}
+                {models.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                    {models.map((model) => (
+                      <motion.div
+                        key={model.key}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex items-center gap-3 p-2.5 rounded-xl group"
+                        style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
+                      >
+                        <div
+                          className="w-7 h-7 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
+                          style={{ background: `${model.color || '#6366f1'}15`, border: `1px solid ${model.color || '#6366f1'}30` }}
+                        >
+                          <img src={`/api/logo/${model.logo_filename}`} alt="" className="w-4 h-4 object-contain"
+                            onError={(e) => { (e.target as HTMLImageElement).src = '/logos/default.svg'; }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{model.name}</div>
+                          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{model.brand_name || model.brand_key}</div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteModel(model.key)}
+                          className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 text-red-400 hover:bg-red-400/10 flex-shrink-0"
+                        >
+                          <Trash size={14} />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Model list */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {models.map((model) => (
-                  <motion.div
-                    key={model.key}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex items-center gap-3 p-3 rounded-xl group"
-                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
-                      style={{ background: `${model.color}15`, border: `1px solid ${model.color}30` }}
-                    >
-                      <img src={`/logos/${model.logo_filename}`} alt="" className="w-5 h-5 object-contain"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{model.name}</div>
-                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{model.key}</div>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteModel(model.key)}
-                      className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 text-red-400 hover:bg-red-400/10 flex-shrink-0"
-                    >
-                      <Trash size={14} />
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
             </div>
           )}
         </motion.div>

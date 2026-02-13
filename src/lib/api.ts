@@ -94,15 +94,37 @@ export const updateDemo = (id: string, data: UpdateDemoPayload) =>
 export interface ModelRegistryEntry {
   key: string;
   name: string;
+  brand_key: string;
+  brand_name: string;
   logo_filename: string;
   color: string;
 }
 
 export const fetchModels = () => request<ModelRegistryEntry[]>('/models');
-export const createModel = (data: ModelRegistryEntry) =>
+export const createModel = (data: { brand_key: string; name: string }) =>
   request<ModelRegistryEntry>('/models', { method: 'POST', body: JSON.stringify(data) });
 export const deleteModel = (key: string) =>
   request<void>(`/models/${key}`, { method: 'DELETE' });
+
+// ---- Brands ----
+export interface Brand {
+  key: string;
+  name: string;
+  logo_filename: string;
+}
+
+export const fetchBrands = () => request<Brand[]>('/brands');
+export const createBrand = (data: Brand) =>
+  request<Brand>('/brands', { method: 'POST', body: JSON.stringify(data) });
+export const deleteBrand = (key: string) =>
+  request<void>(`/brands/${key}`, { method: 'DELETE' });
+
+// ---- SVG Logos (R2) ----
+export const fetchLogos = () => request<string[]>('/logos');
+export const uploadLogo = (data: { name: string; content: string }) =>
+  request<{ name: string }>('/logos', { method: 'POST', body: JSON.stringify(data) });
+export const deleteLogo = (name: string) =>
+  request<void>(`/logos/${name}`, { method: 'DELETE' });
 
 // ---- Auth ----
 export interface LoginResponse {

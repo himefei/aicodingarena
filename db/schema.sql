@@ -23,12 +23,21 @@ CREATE TABLE IF NOT EXISTS demos (
   FOREIGN KEY (tab_id) REFERENCES tabs(id) ON DELETE CASCADE
 );
 
--- Models Registry: predefined AI model metadata
+-- Model Brands: company/brand identifiers with SVG logos
+CREATE TABLE IF NOT EXISTS model_brands (
+  key TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  logo_filename TEXT NOT NULL
+);
+
+-- Models Registry: individual AI models belonging to a brand
 CREATE TABLE IF NOT EXISTS models_registry (
   key TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  brand_key TEXT,
   logo_filename TEXT NOT NULL,
-  color TEXT NOT NULL DEFAULT '#6366f1'
+  color TEXT NOT NULL DEFAULT '#6366f1',
+  FOREIGN KEY (brand_key) REFERENCES model_brands(key)
 );
 
 -- Rate limiting for login attempts
@@ -44,17 +53,32 @@ INSERT OR IGNORE INTO tabs (id, name_cn, name_en, slug, sort_order) VALUES
   ('tab-phone-os', '手机操作系统模拟器', 'Phone OS Simulator', 'phone-os-simulator', 1),
   ('tab-hex-balls', 'Python六边形小球', 'Python Hexagonal Balls', 'python-hex-balls', 2);
 
--- Seed: AI models (based on available SVG logos)
-INSERT OR IGNORE INTO models_registry (key, name, logo_filename, color) VALUES
-  ('openai', 'OpenAI', 'openai.svg', '#10a37f'),
-  ('anthropic', 'Anthropic', 'anthropic.svg', '#d97706'),
-  ('gemini', 'Gemini', 'gemini.svg', '#4285f4'),
-  ('deepseek', 'DeepSeek', 'deepseek.svg', '#4d6bfe'),
-  ('grok', 'Grok', 'grok.svg', '#1d9bf0'),
-  ('llama', 'Llama', 'llama.svg', '#0668e1'),
-  ('qwen', 'Qwen', 'qwen.svg', '#6c3baa'),
-  ('mistral', 'Mistral', 'mistral.svg', '#f97316'),
-  ('glm', 'GLM', 'glm.svg', '#3b82f6'),
-  ('cohere', 'Cohere', 'cohere.svg', '#39594d'),
-  ('huggingface', 'Hugging Face', 'huggingface.svg', '#ffbd45'),
-  ('minimax', 'MiniMax', 'minimax.svg', '#6366f1');
+-- Seed: model brands
+INSERT OR IGNORE INTO model_brands (key, name, logo_filename) VALUES
+  ('openai', 'OpenAI', 'openai.svg'),
+  ('anthropic', 'Anthropic', 'anthropic.svg'),
+  ('gemini', 'Gemini', 'gemini.svg'),
+  ('deepseek', 'DeepSeek', 'deepseek.svg'),
+  ('grok', 'Grok', 'grok.svg'),
+  ('llama', 'Llama', 'llama.svg'),
+  ('qwen', 'Qwen', 'qwen.svg'),
+  ('mistral', 'Mistral', 'mistral.svg'),
+  ('glm', 'GLM', 'glm.svg'),
+  ('cohere', 'Cohere', 'cohere.svg'),
+  ('huggingface', 'Hugging Face', 'huggingface.svg'),
+  ('minimax', 'MiniMax', 'minimax.svg');
+
+-- Seed: AI models (one legacy model per brand for backward compat)
+INSERT OR IGNORE INTO models_registry (key, name, brand_key, logo_filename, color) VALUES
+  ('openai', 'OpenAI', 'openai', 'openai.svg', '#10a37f'),
+  ('anthropic', 'Anthropic', 'anthropic', 'anthropic.svg', '#d97706'),
+  ('gemini', 'Gemini', 'gemini', 'gemini.svg', '#4285f4'),
+  ('deepseek', 'DeepSeek', 'deepseek', 'deepseek.svg', '#4d6bfe'),
+  ('grok', 'Grok', 'grok', 'grok.svg', '#1d9bf0'),
+  ('llama', 'Llama', 'llama', 'llama.svg', '#0668e1'),
+  ('qwen', 'Qwen', 'qwen', 'qwen.svg', '#6c3baa'),
+  ('mistral', 'Mistral', 'mistral', 'mistral.svg', '#f97316'),
+  ('glm', 'GLM', 'glm', 'glm.svg', '#3b82f6'),
+  ('cohere', 'Cohere', 'cohere', 'cohere.svg', '#39594d'),
+  ('huggingface', 'Hugging Face', 'huggingface', 'huggingface.svg', '#ffbd45'),
+  ('minimax', 'MiniMax', 'minimax', 'minimax.svg', '#6366f1');
