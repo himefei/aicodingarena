@@ -473,7 +473,7 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
               {/* Add model form */}
               <div className="rounded-2xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('addModel')}</h3>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <input
                     value={newModel.key}
                     onChange={(e) => setNewModel({ ...newModel, key: e.target.value })}
@@ -507,14 +507,6 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                     />
                     <CaretDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                   </div>
-                  {/* Color picker */}
-                  <input
-                    type="color"
-                    value={newModel.color}
-                    onChange={(e) => setNewModel({ ...newModel, color: e.target.value })}
-                    className="w-full h-full rounded-xl cursor-pointer border-0"
-                    style={{ minHeight: '42px' }}
-                  />
                   {/* Add button */}
                   <button
                     onClick={handleAddModel}
@@ -549,7 +541,6 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                       <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{model.name}</div>
                       <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{model.key}</div>
                     </div>
-                    <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: model.color }} />
                     <button
                       onClick={() => handleDeleteModel(model.key)}
                       className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 text-red-400 hover:bg-red-400/10 flex-shrink-0"
