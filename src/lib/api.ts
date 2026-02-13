@@ -79,6 +79,17 @@ export interface UploadPayload {
 export const uploadDemo = (data: UploadPayload) =>
   request<Demo>('/demos', { method: 'POST', body: JSON.stringify(data) });
 
+export interface UpdateDemoPayload {
+  tab_id?: string;
+  model_key?: string;
+  model_name?: string;
+  demo_type?: 'html' | 'python';
+  code?: string;
+}
+
+export const updateDemo = (id: string, data: UpdateDemoPayload) =>
+  request<Demo>(`/demos/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
 // ---- Models Registry ----
 export interface ModelRegistryEntry {
   key: string;

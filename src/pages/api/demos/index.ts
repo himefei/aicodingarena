@@ -942,7 +942,7 @@ __all__ = [
 `;
 
 // Pyodide wrapper template for Python demos
-function wrapPythonAsHtml(pythonCode: string): string {
+export function wrapPythonAsHtml(pythonCode: string): string {
   // Detect which packages the code actually needs
   const usesPygame = /^(?:import\s+pygame|from\s+pygame)/m.test(pythonCode);
   const usesNumpy = /^(?:import\s+numpy|from\s+numpy)/m.test(pythonCode);

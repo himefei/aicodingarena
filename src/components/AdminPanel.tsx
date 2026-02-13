@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/lib/language';
 import {
   fetchTabs, createTab, updateTab, deleteTab as apiDeleteTab,
-  fetchDemos, deleteDemo as apiDeleteDemo, uploadDemo,
+  fetchDemos, deleteDemo as apiDeleteDemo, uploadDemo, updateDemo,
   fetchModels, createModel, deleteModel as apiDeleteModel,
   type Tab, type Demo, type ModelRegistryEntry, type UploadPayload,
   logoutAdmin,
@@ -39,6 +39,14 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
   // Tab form state
   const [tabForm, setTabForm] = useState({ name_cn: '', name_en: '', slug: '' });
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
+
+  // Edit demo state
+  const [editingDemoId, setEditingDemoId] = useState<string | null>(null);
+  const [editDemoTabId, setEditDemoTabId] = useState('');
+  const [editDemoModelKey, setEditDemoModelKey] = useState('');
+  const [editDemoType, setEditDemoType] = useState<'html' | 'python'>('html');
+  const [editDemoCode, setEditDemoCode] = useState('');
+  const [editingSaving, setEditingSaving] = useState(false);
 
   // New model form
   const [newModel, setNewModel] = useState({ key: '', name: '', logo_filename: AVAILABLE_LOGOS[0], color: '#6366f1' });
@@ -110,6 +118,51 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
     } catch (e) {
       toast.error('Failed to delete demo');
     }
+  };
+
+  const handleEditDemo = (demo: Demo) => {
+    setEditingDemoId(demo.id);
+    setEditDemoTabId(demo.tab_id);
+    setEditDemoModelKey(demo.model_key);
+    setEditDemoType(demo.demo_type as 'html' | 'python');
+    setEditDemoCode('');
+  };
+
+  const handleCancelEditDemo = () => {
+    setEditingDemoId(null);
+    setEditDemoCode('');
+  };
+
+  const handleSaveDemo = async () => {
+    if (!editingDemoId) return;
+    setEditingSaving(true);
+    try {
+      const selectedModel = models.find(m => m.key === editDemoModelKey);
+      await updateDemo(editingDemoId, {
+        tab_id: editDemoTabId,
+        model_key: editDemoModelKey,
+        model_name: selectedModel?.name || editDemoModelKey,
+        demo_type: editDemoType,
+        ...(editDemoCode.trim() ? { code: editDemoCode } : {}),
+      });
+      toast.success('Demo updated!');
+      setEditingDemoId(null);
+      setEditDemoCode('');
+      loadData();
+    } catch (e) {
+      toast.error('Failed to update demo');
+    }
+    setEditingSaving(false);
+  };
+
+  const handleEditFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setEditDemoCode(ev.target?.result as string);
+    };
+    reader.readAsText(file);
   };
 
   // ---- Upload ----
@@ -343,34 +396,152 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                 demos.map((demo) => (
                   <motion.div
                     key={demo.id}
+                    layout
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center justify-between p-4 rounded-xl transition-colors"
+                    className="rounded-xl overflow-hidden transition-colors"
                     style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="px-2 py-0.5 rounded text-xs font-medium"
-                        style={{
-                          background: demo.demo_type === 'python' ? 'rgba(59,130,246,0.15)' : 'rgba(99,102,241,0.15)',
-                          color: demo.demo_type === 'python' ? '#3b82f6' : '#6366f1',
-                        }}
-                      >
-                        {demo.demo_type}
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{demo.model_name}</div>
-                        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {tabs.find(t => t.id === demo.tab_id)?.[language === 'zh' ? 'name_cn' : 'name_en']} · {new Date(demo.created_at).toLocaleDateString()}
+                    {/* Demo row header */}
+                    <div className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="px-2 py-0.5 rounded text-xs font-medium"
+                          style={{
+                            background: demo.demo_type === 'python' ? 'rgba(59,130,246,0.15)' : 'rgba(99,102,241,0.15)',
+                            color: demo.demo_type === 'python' ? '#3b82f6' : '#6366f1',
+                          }}
+                        >
+                          {demo.demo_type}
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{demo.model_name}</div>
+                          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {tabs.find(t => t.id === demo.tab_id)?.[language === 'zh' ? 'name_cn' : 'name_en']} · {new Date(demo.created_at).toLocaleDateString()}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => editingDemoId === demo.id ? handleCancelEditDemo() : handleEditDemo(demo)}
+                          className="p-2 rounded-lg transition-colors"
+                          style={{ color: editingDemoId === demo.id ? 'var(--color-primary)' : 'var(--text-muted)' }}
+                        >
+                          <PencilSimple size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDemo(demo.id)}
+                          className="p-2 rounded-lg transition-colors text-red-400 hover:bg-red-400/10"
+                        >
+                          <Trash size={16} />
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteDemo(demo.id)}
-                      className="p-2 rounded-lg transition-colors text-red-400 hover:bg-red-400/10"
-                    >
-                      <Trash size={16} />
-                    </button>
+
+                    {/* Inline edit form */}
+                    <AnimatePresence>
+                      {editingDemoId === demo.id && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-4 pb-4 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4">
+                              {/* Tab select */}
+                              <div>
+                                <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-muted)' }}>{t('selectTab')}</label>
+                                <select
+                                  value={editDemoTabId}
+                                  onChange={(e) => setEditDemoTabId(e.target.value)}
+                                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                                  style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                                >
+                                  {tabs.map(tab => (
+                                    <option key={tab.id} value={tab.id}>
+                                      {language === 'zh' ? tab.name_cn : tab.name_en}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Model select */}
+                              <div>
+                                <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-muted)' }}>{t('selectModel')}</label>
+                                <select
+                                  value={editDemoModelKey}
+                                  onChange={(e) => setEditDemoModelKey(e.target.value)}
+                                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                                  style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                                >
+                                  {models.map(m => (
+                                    <option key={m.key} value={m.key}>{m.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Type select */}
+                              <div>
+                                <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-muted)' }}>{t('demoType')}</label>
+                                <select
+                                  value={editDemoType}
+                                  onChange={(e) => setEditDemoType(e.target.value as 'html' | 'python')}
+                                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                                  style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                                >
+                                  <option value="html">HTML</option>
+                                  <option value="python">Python</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* Code area (optional - only if re-uploading) */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                                  {t('pasteCode')} <span className="opacity-60">({language === 'zh' ? '留空则保留原文件' : 'leave empty to keep existing file'})</span>
+                                </label>
+                                <label className="text-xs cursor-pointer transition-colors" style={{ color: 'var(--color-primary)' }}>
+                                  {t('orUploadFile')}
+                                  <input type="file" accept=".html,.htm,.py,.txt" className="hidden" onChange={handleEditFileUpload} />
+                                </label>
+                              </div>
+                              <textarea
+                                value={editDemoCode}
+                                onChange={(e) => setEditDemoCode(e.target.value)}
+                                placeholder={editDemoType === 'html' ? '<!DOCTYPE html>\n<html>...' : 'import pygame\n...'}
+                                rows={8}
+                                className="w-full px-4 py-3 rounded-xl text-sm font-mono outline-none resize-y"
+                                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                              />
+                            </div>
+
+                            {/* Save / Cancel */}
+                            <div className="flex gap-2">
+                              <motion.button
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
+                                onClick={handleSaveDemo}
+                                disabled={editingSaving}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40"
+                                style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))' }}
+                              >
+                                {editingSaving ? t('uploading') : t('save')}
+                              </motion.button>
+                              <button
+                                onClick={handleCancelEditDemo}
+                                className="px-4 py-2.5 rounded-xl text-sm font-medium"
+                                style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                              >
+                                {t('cancel')}
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 ))
               )}
