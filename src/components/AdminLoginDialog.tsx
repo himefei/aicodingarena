@@ -5,12 +5,11 @@ import { login as apiLogin, type LoginResponse } from '@/lib/api';
 import { Lock, Eye, EyeSlash, X } from '@phosphor-icons/react';
 
 interface AdminLoginDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onLoginSuccess: () => void;
+  onClose: () => void;
+  onSuccess: () => void;
 }
 
-export function AdminLoginDialog({ open, onOpenChange, onLoginSuccess }: AdminLoginDialogProps) {
+export function AdminLoginDialog({ onClose, onSuccess }: AdminLoginDialogProps) {
   const { t } = useLanguage();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -34,8 +33,8 @@ export function AdminLoginDialog({ open, onOpenChange, onLoginSuccess }: AdminLo
         sessionStorage.setItem('admin-token-expiry', String(data.expiresAt));
         setIsLocked(false);
         setLockoutMinutes(0);
-        onLoginSuccess();
-        onOpenChange(false);
+        onSuccess();
+        onClose();
         setPassword('');
       } else {
         if (data.locked) {
@@ -49,8 +48,8 @@ export function AdminLoginDialog({ open, onOpenChange, onLoginSuccess }: AdminLo
       if (password === 'dev-admin-123') {
         sessionStorage.setItem('admin-token', 'dev-token');
         sessionStorage.setItem('admin-token-expiry', String(Date.now() + 24 * 60 * 60 * 1000));
-        onLoginSuccess();
-        onOpenChange(false);
+        onSuccess();
+        onClose();
         setPassword('');
       } else {
         setError(t('incorrectPassword'));
@@ -61,16 +60,14 @@ export function AdminLoginDialog({ open, onOpenChange, onLoginSuccess }: AdminLo
   };
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-            onClick={() => onOpenChange(false)}
-          />
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -96,7 +93,7 @@ export function AdminLoginDialog({ open, onOpenChange, onLoginSuccess }: AdminLo
                 </div>
               </div>
               <button
-                onClick={() => onOpenChange(false)}
+                onClick={onClose}
                 className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
                 style={{ color: 'var(--text-muted)' }}
               >
@@ -159,7 +156,7 @@ export function AdminLoginDialog({ open, onOpenChange, onLoginSuccess }: AdminLo
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => { onOpenChange(false); setPassword(''); setError(''); }}
+                  onClick={() => { onClose(); setPassword(''); setError(''); }}
                   className="flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
                   style={{
                     background: 'var(--bg-card)',
@@ -181,9 +178,7 @@ export function AdminLoginDialog({ open, onOpenChange, onLoginSuccess }: AdminLo
                 </button>
               </div>
             </form>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+      </motion.div>
+    </>
   );
 }
