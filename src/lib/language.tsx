@@ -130,9 +130,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('arena-language');
       if (saved === 'zh' || saved === 'en') return saved;
-      return navigator.language.startsWith('zh') ? 'zh' : 'en';
+      return navigator.language.startsWith('en') ? 'en' : 'zh';
     }
-    return 'en';
+    return 'zh';
   });
 
   useEffect(() => {

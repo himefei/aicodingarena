@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Demo } from '@/lib/api';
 import { getDemoUrl } from '@/lib/api';
 import { getModelByKey, getModelLogo } from '@/lib/models';
 import { useLanguage } from '@/lib/language';
-import { ArrowLeft, ArrowsOut, ArrowSquareOut, Play } from '@phosphor-icons/react';
+import { ArrowLeft, ArrowsOut, ArrowSquareOut, Play, X } from '@phosphor-icons/react';
 
 interface DemoViewerProps {
   demo: Demo;
@@ -19,6 +19,7 @@ export function DemoViewer({ demo, onClose }: DemoViewerProps) {
   const logoSrc = getModelLogo(demo.model_key);
   const isPython = demo.demo_type === 'python';
   const [pythonLoaded, setPythonLoaded] = useState(false);
+  const [showToolbar, setShowToolbar] = useState(false);
 
   const handleFullscreen = () => {
     const iframe = document.getElementById('demo-viewer-iframe') as HTMLIFrameElement;
@@ -39,17 +40,41 @@ export function DemoViewer({ demo, onClose }: DemoViewerProps) {
       className="fixed inset-0 z-50 flex flex-col"
       style={{ background: 'var(--bg)' }}
     >
+      {/* Toolbar toggle hint */}
+      <AnimatePresence>
+        {!showToolbar && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ delay: 0.3 }}
+            onClick={() => setShowToolbar(true)}
+            className="absolute top-0 left-1/2 -translate-x-1/2 z-10 px-4 py-1 rounded-b-lg text-xs cursor-pointer"
+            style={{
+              background: 'rgba(0,0,0,0.45)',
+              color: 'rgba(255,255,255,0.7)',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            {language === 'zh' ? '▼ 点击显示工具栏' : '▼ Tap to show toolbar'}
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* Floating toolbar */}
-      <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3 px-4 py-2 rounded-2xl glass"
-        style={{
-          border: '1px solid var(--border)',
-          boxShadow: 'var(--shadow-lg)',
-        }}
-      >
+      <AnimatePresence>
+        {showToolbar && (
+          <motion.div
+            initial={{ y: -40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -40, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3 px-4 py-2 rounded-2xl glass"
+            style={{
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -96,7 +121,17 @@ export function DemoViewer({ demo, onClose }: DemoViewerProps) {
           <ArrowsOut size={16} />
           {t('fullscreen')}
         </motion.button>
-      </motion.div>
+
+          <button
+            onClick={() => setShowToolbar(false)}
+            className="p-1.5 rounded-lg transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <X size={14} />
+          </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Demo content */}
       {isPython && !pythonLoaded ? (
