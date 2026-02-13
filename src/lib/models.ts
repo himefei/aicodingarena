@@ -37,8 +37,22 @@ export const PREDEFINED_MODELS: ModelDef[] = [
   { key: 'minimax', name: 'MiniMax', logoFilename: 'minimax.svg', color: '#6366f1' },
 ];
 
+/** Runtime models cache populated from DB */
+let _runtimeModels: ModelDef[] = [];
+
+/** Call this on app load with models fetched from the DB API */
+export function setRuntimeModels(models: Array<{ key: string; name: string; logo_filename: string; color: string }>) {
+  _runtimeModels = models.map(m => ({
+    key: m.key,
+    name: m.name,
+    logoFilename: m.logo_filename,
+    color: m.color,
+  }));
+}
+
 export function getModelByKey(key: string): ModelDef | undefined {
-  return PREDEFINED_MODELS.find(m => m.key === key);
+  return _runtimeModels.find(m => m.key === key)
+    || PREDEFINED_MODELS.find(m => m.key === key);
 }
 
 export function getModelLogo(key: string): string {
