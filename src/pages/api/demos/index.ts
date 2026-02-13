@@ -6,7 +6,6 @@ import { CORS_HEADERS, jsonResponse, errorResponse, verifyToken, getEnv } from '
 const PYGAME_SHIM = `
 import sys as _sys
 import math as _math
-import time as _time_mod
 from js import document as _document, window as _window, setTimeout as _setTimeout
 from pyodide.ffi import create_proxy as _create_proxy
 
@@ -285,7 +284,7 @@ class _EventModule:
     def __init__(self):
         self._queue = []
         self._frame_count = 0
-        self._max_frames = 36000
+        self._max_frames = 1800
     def get(self, *args):
         self._frame_count += 1
         events = list(self._queue)
@@ -576,32 +575,13 @@ class Font:
 
 font = _FontModule()
 
-# ── Async yield helper ─────────────────────────────────────
-# In Pyodide runPythonAsync, we can await JS promises to yield to the browser
-# This lets the browser paint frames and process input events
-from js import Promise as _Promise
-
-def _yield_to_browser(ms=0):
-    """Yield control to browser event loop. Must be called from runPythonAsync context."""
-    ms = max(0, int(ms))
-    try:
-        from pyodide.ffi import run_sync as _run_sync
-        p = _Promise.new(lambda resolve, reject: _window.setTimeout(resolve, ms))
-        _run_sync(p)
-    except (ImportError, AttributeError):
-        # Fallback for older Pyodide: time.sleep is patched to yield via Asyncify
-        _time_mod.sleep(max(0.001, ms / 1000) if ms > 0 else 0.001)
-
 # ── Time ───────────────────────────────────────────────────
 class _TimeModule:
     def get_ticks(self):
         return int(_window.performance.now())
     def delay(self, ms):
-        if ms > 0:
-            _yield_to_browser(ms)
+        pass
     def wait(self, ms):
-        if ms > 0:
-            _yield_to_browser(ms)
         return ms
     def set_timer(self, event_type, millis, loops=0):
         pass
@@ -612,19 +592,14 @@ class _Clock:
     def __init__(self):
         self._last = _window.performance.now()
         self._dt = 0
-        self._frame_count = 0
     def tick(self, fps=0):
         now = _window.performance.now()
         self._dt = now - self._last
-        self._frame_count += 1
         if fps > 0:
             target_ms = 1000.0 / fps
             remaining = target_ms - self._dt
-            if remaining > 1:
-                _yield_to_browser(remaining)
-        else:
-            # Even without fps cap, yield every frame so browser can paint
-            _yield_to_browser(0)
+            if remaining > 0:
+                pass  # Cannot yield in sync code; browser paints after runPythonAsync ends
         self._last = _window.performance.now()
         return self._dt
     def get_time(self):
@@ -1038,7 +1013,7 @@ function wrapPythonAsHtml(pythonCode: string): string {
         // Step 1: Load Pyodide core (heaviest step)
         setProgress(10, '⏳ Loading Python runtime (first load may take ~5s)...');
         const pyodide = await loadPyodide({
-          indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.1/full/'
+          indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
         });
         setProgress(40, '✓ Python runtime ready');
 
@@ -1054,9 +1029,9 @@ function wrapPythonAsHtml(pythonCode: string): string {
         ${usesPygame ? `// Step 3: Install pygame browser shim (instant, no download)
         setProgress(85, '🎮 Setting up pygame shim...');
         const pygameShim = ${JSON.stringify(PYGAME_SHIM)};
-        try { pyodide.FS.mkdir('/lib/python3.11/site-packages/pygame'); } catch(e) {}
-        pyodide.FS.writeFile('/lib/python3.11/site-packages/pygame/__init__.py', pygameShim);
-        pyodide.FS.writeFile('/lib/python3.11/site-packages/pygame/locals.py', 'from pygame import *\\n');` : ''}
+        try { pyodide.FS.mkdir('/lib/python3.12/site-packages/pygame'); } catch(e) {}
+        pyodide.FS.writeFile('/lib/python3.12/site-packages/pygame/__init__.py', pygameShim);
+        pyodide.FS.writeFile('/lib/python3.12/site-packages/pygame/locals.py', 'from pygame import *\\n');` : ''}
 
         // Step 4: Setup stdout/stderr capture
         setProgress(90, '🔧 Setting up environment...');

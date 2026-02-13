@@ -1,6 +1,6 @@
 // Service Worker: Cache Pyodide runtime and packages for fast subsequent loads
 const CACHE_NAME = 'pyodide-cache-v1';
-const PYODIDE_BASE = 'https://cdn.jsdelivr.net/pyodide/v0.25.1/full/';
+const PYODIDE_BASE = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
 
 // Files to cache on first encounter
 const PYODIDE_PATTERNS = [
