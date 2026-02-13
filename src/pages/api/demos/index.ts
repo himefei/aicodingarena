@@ -46,6 +46,35 @@ function wrapPythonAsHtml(pythonCode: string): string {
         await pyodide.loadPackage(['micropip']);
         const micropip = pyodide.pyimport('micropip');
 
+        // Auto-detect and install required packages
+        const code = ${JSON.stringify(pythonCode)};
+        const importPattern = /^(?:import|from)\\s+(\\w+)/gm;
+        const detectedPackages = new Set();
+        let m;
+        while ((m = importPattern.exec(code)) !== null) {
+          const pkg = m[1];
+          // Skip stdlib modules
+          const stdlib = new Set(['sys','os','io','math','random','json','re','time','datetime','collections','itertools','functools','string','typing','abc','copy','enum','pathlib','dataclasses','operator','contextlib','textwrap','struct','array','bisect','heapq','statistics','decimal','fractions','hashlib','hmac','secrets','base64','html','xml','csv','configparser','argparse','logging','unittest','pdb','traceback','gc','inspect','dis','ast','token','tokenize','codecs','unicodedata','locale','gettext','platform','ctypes','threading','multiprocessing','subprocess','socket','ssl','email','http','urllib','ftplib','smtplib','uuid','tempfile','shutil','glob','fnmatch','pickle','shelve','sqlite3','zipfile','tarfile','gzip','bz2','lzma','zlib','pprint','warnings','weakref','types','importlib']);
+          if (!stdlib.has(pkg)) {
+            detectedPackages.add(pkg);
+          }
+        }
+
+        for (const pkg of detectedPackages) {
+          try {
+            progressEl.textContent = 'Installing ' + pkg + '...';
+            // Try Pyodide built-in packages first
+            try {
+              await pyodide.loadPackage([pkg]);
+            } catch {
+              // Fallback to micropip
+              await micropip.install(pkg);
+            }
+          } catch (e) {
+            console.warn('Failed to install ' + pkg + ':', e);
+          }
+        }
+
         pyodide.runPython(\`
 import sys
 from io import StringIO
@@ -70,7 +99,7 @@ sys.stderr = OutputCapture()
         loadingEl.style.display = 'none';
 
         progressEl.textContent = 'Running...';
-        await pyodide.runPythonAsync(${JSON.stringify(pythonCode)});
+        await pyodide.runPythonAsync(code);
 
       } catch (error) {
         loadingEl.style.display = 'none';

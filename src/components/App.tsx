@@ -335,9 +335,11 @@ function AppInner() {
                     >
                       <DemoTile
                         demo={demo}
+                        index={index}
                         compareMode={compareMode}
                         isSelected={!!selectedDemos.find(d => d.id === demo.id)}
-                        onClick={() => handleDemoClick(demo)}
+                        onToggleCompare={toggleDemoSelection}
+                        onClick={() => setViewingDemo(demo)}
                       />
                     </motion.div>
                   ))}
