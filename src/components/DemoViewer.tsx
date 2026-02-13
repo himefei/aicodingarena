@@ -1,9 +1,10 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import type { Demo } from '@/lib/api';
 import { getDemoUrl } from '@/lib/api';
 import { getModelByKey, getModelLogo } from '@/lib/models';
 import { useLanguage } from '@/lib/language';
-import { ArrowLeft, ArrowsOut } from '@phosphor-icons/react';
+import { ArrowLeft, ArrowsOut, ArrowSquareOut, Play } from '@phosphor-icons/react';
 
 interface DemoViewerProps {
   demo: Demo;
@@ -16,12 +17,18 @@ export function DemoViewer({ demo, onClose }: DemoViewerProps) {
   const color = model?.color || '#6366f1';
   const demoUrl = getDemoUrl(demo);
   const logoSrc = getModelLogo(demo.model_key);
+  const isPython = demo.demo_type === 'python';
+  const [pythonLoaded, setPythonLoaded] = useState(false);
 
   const handleFullscreen = () => {
     const iframe = document.getElementById('demo-viewer-iframe') as HTMLIFrameElement;
     if (iframe?.requestFullscreen) {
       iframe.requestFullscreen();
     }
+  };
+
+  const handleOpenNewTab = () => {
+    window.open(demoUrl, '_blank');
   };
 
   return (
@@ -91,14 +98,57 @@ export function DemoViewer({ demo, onClose }: DemoViewerProps) {
         </motion.button>
       </motion.div>
 
-      {/* Demo iframe */}
-      <iframe
-        id="demo-viewer-iframe"
-        src={demoUrl}
-        title={`${demo.model_name} demo`}
-        className="w-full h-full border-0"
-        sandbox="allow-scripts allow-same-origin"
-      />
+      {/* Demo content */}
+      {isPython && !pythonLoaded ? (
+        /* Python: show launch screen to avoid freezing parent page */
+        <div className="flex-1 flex flex-col items-center justify-center gap-6" style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' }}>
+          <div className="text-6xl">🐍</div>
+          <p className="text-lg font-medium" style={{ color: '#94a3b8' }}>
+            {language === 'zh' ? 'Python Demo 需要加载运行时环境' : 'Python Demo requires loading the runtime'}
+          </p>
+          <p className="text-sm max-w-md text-center" style={{ color: '#64748b' }}>
+            {language === 'zh'
+              ? 'Pyodide 运行时约 15MB，首次加载需要 5-10 秒。加载后浏览器会缓存，下次秒开。'
+              : 'Pyodide runtime is ~15MB. First load takes 5-10s. Cached after that for instant loads.'}
+          </p>
+          <div className="flex gap-3 mt-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setPythonLoaded(true)}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+            >
+              <Play size={18} weight="fill" />
+              {language === 'zh' ? '在此页面运行' : 'Run on this page'}
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleOpenNewTab}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
+              style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)' }}
+            >
+              <ArrowSquareOut size={18} />
+              {language === 'zh' ? '新标签页打开（推荐）' : 'Open in new tab (recommended)'}
+            </motion.button>
+          </div>
+          <p className="text-xs mt-4" style={{ color: '#475569' }}>
+            {language === 'zh'
+              ? '💡 新标签页打开不会卡住主页面'
+              : '💡 New tab won\'t freeze the main page'}
+          </p>
+        </div>
+      ) : (
+        /* HTML demos or Python after user clicks Run */
+        <iframe
+          id="demo-viewer-iframe"
+          src={demoUrl}
+          title={`${demo.model_name} demo`}
+          className="w-full h-full border-0"
+          sandbox="allow-scripts allow-same-origin"
+        />
+      )}
     </motion.div>
   );
 }

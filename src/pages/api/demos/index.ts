@@ -364,8 +364,6 @@ class _DisplayModule:
     def flip(self):
         if self._ctx and self._surface:
             self._ctx.drawImage(self._surface._canvas, 0, 0)
-        # Yield to browser so it can actually paint the frame
-        _time_mod.sleep(0.001)
     def update(self, *args):
         self.flip()
     def set_caption(self, title, icontitle=''):
@@ -578,16 +576,32 @@ class Font:
 
 font = _FontModule()
 
+# ── Async yield helper ─────────────────────────────────────
+# In Pyodide runPythonAsync, we can await JS promises to yield to the browser
+# This lets the browser paint frames and process input events
+from js import Promise as _Promise
+
+def _yield_to_browser(ms=0):
+    """Yield control to browser event loop. Must be called from runPythonAsync context."""
+    ms = max(0, int(ms))
+    try:
+        from pyodide.ffi import run_sync as _run_sync
+        p = _Promise.new(lambda resolve, reject: _window.setTimeout(resolve, ms))
+        _run_sync(p)
+    except (ImportError, AttributeError):
+        # Fallback for older Pyodide: time.sleep is patched to yield via Asyncify
+        _time_mod.sleep(max(0.001, ms / 1000) if ms > 0 else 0.001)
+
 # ── Time ───────────────────────────────────────────────────
 class _TimeModule:
     def get_ticks(self):
         return int(_window.performance.now())
     def delay(self, ms):
         if ms > 0:
-            _time_mod.sleep(ms / 1000)
+            _yield_to_browser(ms)
     def wait(self, ms):
         if ms > 0:
-            _time_mod.sleep(ms / 1000)
+            _yield_to_browser(ms)
         return ms
     def set_timer(self, event_type, millis, loops=0):
         pass
@@ -598,17 +612,19 @@ class _Clock:
     def __init__(self):
         self._last = _window.performance.now()
         self._dt = 0
+        self._frame_count = 0
     def tick(self, fps=0):
         now = _window.performance.now()
         self._dt = now - self._last
+        self._frame_count += 1
         if fps > 0:
             target_ms = 1000.0 / fps
             remaining = target_ms - self._dt
             if remaining > 1:
-                # time.sleep is patched by Pyodide to yield to the browser event loop
-                # This is critical: without this, the while-loop blocks the main thread
-                # and the browser never gets to paint frames
-                _time_mod.sleep(remaining / 1000)
+                _yield_to_browser(remaining)
+        else:
+            # Even without fps cap, yield every frame so browser can paint
+            _yield_to_browser(0)
         self._last = _window.performance.now()
         return self._dt
     def get_time(self):

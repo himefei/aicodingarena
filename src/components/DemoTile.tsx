@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import type { Demo } from '@/lib/api';
 import { getDemoUrl, getThumbnailUrl } from '@/lib/api';
 import { getModelByKey, getModelLogo } from '@/lib/models';
-import { Plus, Check, Play } from '@phosphor-icons/react';
+import { Plus, Check, Play, FilePy } from '@phosphor-icons/react';
 import { useLanguage } from '@/lib/language';
 
 interface DemoTileProps {
@@ -67,8 +67,8 @@ export function DemoTile({ demo, index, compareMode, isSelected, onToggleCompare
           />
         )}
 
-        {/* Live iframe on hover */}
-        {(isHovered || !thumbnailUrl) && (
+        {/* Live iframe on hover - HTML demos only (Python is too heavy for preview) */}
+        {demo.demo_type !== 'python' && (isHovered || !thumbnailUrl) && (
           <div className="absolute inset-0">
             <div className="w-[400%] h-[400%] origin-top-left" style={{ transform: 'scale(0.25)' }}>
               <iframe
@@ -87,6 +87,14 @@ export function DemoTile({ demo, index, compareMode, isSelected, onToggleCompare
                 <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-muted)', borderTopColor: 'transparent' }} />
               </div>
             )}
+          </div>
+        )}
+
+        {/* Python demo placeholder (no live preview to avoid freezing) */}
+        {demo.demo_type === 'python' && !thumbnailUrl && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' }}>
+            <FilePy size={48} weight="duotone" className="text-blue-400 opacity-60" />
+            <span className="text-xs text-blue-300/60 font-medium">Python Demo</span>
           </div>
         )}
 
