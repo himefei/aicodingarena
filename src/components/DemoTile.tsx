@@ -1,0 +1,168 @@
+import { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
+import type { Demo } from '@/lib/api';
+import { getDemoUrl, getThumbnailUrl } from '@/lib/api';
+import { getModelByKey, getModelLogo } from '@/lib/models';
+import { Plus, Check, Play } from '@phosphor-icons/react';
+import { useLanguage } from '@/lib/language';
+
+interface DemoTileProps {
+  demo: Demo;
+  index: number;
+  compareMode: boolean;
+  isSelected: boolean;
+  onToggleCompare: (demo: Demo) => void;
+  onClick: (demo: Demo) => void;
+}
+
+export function DemoTile({ demo, index, compareMode, isSelected, onToggleCompare, onClick }: DemoTileProps) {
+  const { language } = useLanguage();
+  const [isHovered, setIsHovered] = useState(false);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const model = getModelByKey(demo.model_key);
+  const logoSrc = getModelLogo(demo.model_key);
+  const modelColor = model?.color || '#6366f1';
+  const thumbnailUrl = getThumbnailUrl(demo);
+  const demoUrl = getDemoUrl(demo);
+
+  const date = new Date(demo.created_at);
+  const dateStr = date.toLocaleDateString(language === 'zh' ? 'zh-CN' : 'en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: index * 0.05, duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      className="group relative rounded-2xl overflow-hidden cursor-pointer tile-shadow"
+      style={{
+        background: 'var(--bg-card)',
+        border: `1px solid ${isSelected ? modelColor : 'var(--border)'}`,
+        borderWidth: isSelected ? '2px' : '1px',
+      }}
+      onClick={() => {
+        if (compareMode) {
+          onToggleCompare(demo);
+        } else {
+          onClick(demo);
+        }
+      }}
+    >
+      {/* Preview Area */}
+      <div className="relative aspect-[4/3] overflow-hidden" style={{ background: 'var(--bg-secondary)' }}>
+        {/* Thumbnail fallback */}
+        {thumbnailUrl && !isHovered && (
+          <img
+            src={thumbnailUrl}
+            alt={`${demo.model_name} preview`}
+            className="w-full h-full object-cover object-top transition-opacity duration-200"
+            style={{ opacity: isHovered ? 0 : 1 }}
+          />
+        )}
+
+        {/* Live iframe on hover */}
+        {(isHovered || !thumbnailUrl) && (
+          <div className="absolute inset-0">
+            <div className="w-[400%] h-[400%] origin-top-left" style={{ transform: 'scale(0.25)' }}>
+              <iframe
+                ref={iframeRef}
+                src={demoUrl}
+                title={`${demo.model_name} demo`}
+                className="w-full h-full border-0"
+                sandbox="allow-scripts allow-same-origin"
+                loading="lazy"
+                onLoad={() => setIframeLoaded(true)}
+                style={{ pointerEvents: 'none' }}
+              />
+            </div>
+            {!iframeLoaded && !thumbnailUrl && (
+              <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}>
+                <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-muted)', borderTopColor: 'transparent' }} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Play overlay on hover (non-compare mode) */}
+        {isHovered && !compareMode && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 flex items-center justify-center bg-black/30"
+          >
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center"
+              style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}
+            >
+              <Play size={24} weight="fill" className="text-gray-800 ml-1" />
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Demo type badge */}
+        <div
+          className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-xs font-medium"
+          style={{
+            background: demo.demo_type === 'python' ? 'rgba(59,130,246,0.9)' : 'rgba(99,102,241,0.9)',
+            color: 'white',
+          }}
+        >
+          {demo.demo_type === 'python' ? 'Python' : 'HTML'}
+        </div>
+
+        {/* Compare select button */}
+        {compareMode && (
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCompare(demo);
+            }}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+            style={{
+              background: isSelected ? modelColor : 'rgba(255,255,255,0.9)',
+              color: isSelected ? 'white' : 'var(--text-secondary)',
+              boxShadow: 'var(--shadow-md)',
+            }}
+          >
+            {isSelected ? <Check size={16} weight="bold" /> : <Plus size={16} weight="bold" />}
+          </motion.button>
+        )}
+      </div>
+
+      {/* Info bar */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
+          style={{ background: `${modelColor}15`, border: `1px solid ${modelColor}30` }}
+        >
+          <img
+            src={logoSrc}
+            alt={demo.model_name}
+            className="w-5 h-5 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+            {demo.model_name}
+          </div>
+          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{dateStr}</div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}

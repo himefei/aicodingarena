@@ -1,0 +1,16 @@
+name = "aicodingarena"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "./dist"
+
+# Environment variables (set via Cloudflare Dashboard for production)
+# ADMIN_PASSWORD = "your-secret-password"
+
+[[d1_databases]]
+binding = "ARENA_DB"
+database_name = "aicodingarena-db"
+database_id = "ed83aafc-fdb1-49c1-b89e-fecbca5eb24e"
+
+[[r2_buckets]]
+binding = "ARENA_FILES"
+bucket_name = "aicodingarena-files"
