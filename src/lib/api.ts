@@ -57,6 +57,7 @@ export interface Demo {
   file_r2_key: string;
   thumbnail_r2_key: string | null;
   demo_type: 'html' | 'python';
+  comment: string | null;
   created_at: string;
 }
 
@@ -74,6 +75,7 @@ export interface UploadPayload {
   demo_type: 'html' | 'python';
   code: string;
   thumbnail?: string; // base64
+  comment?: string;
 }
 
 export const uploadDemo = (data: UploadPayload) =>
@@ -85,6 +87,7 @@ export interface UpdateDemoPayload {
   model_name?: string;
   demo_type?: 'html' | 'python';
   code?: string;
+  comment?: string;
 }
 
 export const updateDemo = (id: string, data: UpdateDemoPayload) =>
@@ -165,6 +168,32 @@ export function logoutAdmin(): void {
   sessionStorage.removeItem('admin-token');
   sessionStorage.removeItem('admin-token-expiry');
 }
+
+// ---- Likes ----
+export interface LikeInfo {
+  count: number;
+  liked: boolean;
+}
+
+export const fetchLikes = (tabId?: string) =>
+  request<Record<string, LikeInfo>>(`/likes${tabId ? `?tab=${tabId}` : ''}`);
+
+export const toggleLike = (demoId: string) =>
+  request<{ liked: boolean; count: number }>(`/demos/${demoId}/like`, { method: 'POST' });
+
+// ---- Leaderboard ----
+export interface LeaderboardEntry {
+  demo_id: string;
+  model_name: string;
+  model_key: string;
+  brand_name: string | null;
+  color: string;
+  like_count: number;
+  tab_id: string;
+}
+
+export const fetchLeaderboard = (tabId?: string) =>
+  request<LeaderboardEntry[]>(`/leaderboard${tabId ? `?tab=${tabId}` : ''}`);
 
 /** Get the URL to load a demo's HTML content */
 export function getDemoUrl(demo: Demo): string {

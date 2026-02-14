@@ -37,6 +37,7 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
   const [uploadModelName, setUploadModelName] = useState('');
   const [uploadType, setUploadType] = useState<'html' | 'python'>('html');
   const [uploadCode, setUploadCode] = useState('');
+  const [uploadComment, setUploadComment] = useState('');
   const [uploading, setUploading] = useState(false);
 
   // Tab form state
@@ -49,6 +50,7 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
   const [editDemoModelKey, setEditDemoModelKey] = useState('');
   const [editDemoType, setEditDemoType] = useState<'html' | 'python'>('html');
   const [editDemoCode, setEditDemoCode] = useState('');
+  const [editDemoComment, setEditDemoComment] = useState('');
   const [editingSaving, setEditingSaving] = useState(false);
 
   // SVG upload form
@@ -140,11 +142,13 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
     setEditDemoModelKey(demo.model_key);
     setEditDemoType(demo.demo_type as 'html' | 'python');
     setEditDemoCode('');
+    setEditDemoComment(demo.comment || '');
   };
 
   const handleCancelEditDemo = () => {
     setEditingDemoId(null);
     setEditDemoCode('');
+    setEditDemoComment('');
   };
 
   const handleSaveDemo = async () => {
@@ -157,11 +161,13 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
         model_key: editDemoModelKey,
         model_name: selectedModel?.name || editDemoModelKey,
         demo_type: editDemoType,
+        comment: editDemoComment.trim() || undefined,
         ...(editDemoCode.trim() ? { code: editDemoCode } : {}),
       });
       toast.success('Demo updated!');
       setEditingDemoId(null);
       setEditDemoCode('');
+      setEditDemoComment('');
       loadData();
     } catch (e) {
       toast.error('Failed to update demo');
@@ -195,11 +201,13 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
         model_name: uploadModelName || selectedModel?.name || uploadModelKey,
         demo_type: uploadType,
         code: uploadCode,
+        ...(uploadComment.trim() ? { comment: uploadComment.trim() } : {}),
       };
 
       await uploadDemo(payload);
       toast.success('Demo uploaded!');
       setUploadCode('');
+      setUploadComment('');
       loadData();
     } catch (e) {
       toast.error('Upload failed');
@@ -461,6 +469,20 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                 />
               </div>
 
+              {/* Comment */}
+              <div>
+                <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-muted)' }}>{t('comment')}</label>
+                <input
+                  type="text"
+                  value={uploadComment}
+                  onChange={(e) => setUploadComment(e.target.value)}
+                  placeholder={t('commentPlaceholder')}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  maxLength={200}
+                />
+              </div>
+
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
@@ -605,6 +627,20 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                                 rows={8}
                                 className="w-full px-4 py-3 rounded-xl text-sm font-mono outline-none resize-y"
                                 style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                              />
+                            </div>
+
+                            {/* Comment */}
+                            <div>
+                              <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-muted)' }}>{t('comment')}</label>
+                              <input
+                                type="text"
+                                value={editDemoComment}
+                                onChange={(e) => setEditDemoComment(e.target.value)}
+                                placeholder={t('commentPlaceholder')}
+                                className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                                maxLength={200}
                               />
                             </div>
 

@@ -65,6 +65,13 @@ const translations = {
     light: '浅色',
     dark: '深色',
     system: '跟随系统',
+    comment: '备注',
+    commentPlaceholder: '简短备注（可选）',
+    like: '赞',
+    likes: '赞',
+    leaderboard: '排行榜',
+    totalRanking: '全部项目',
+    noLikesYet: '暂无投票数据',
   },
   en: {
     siteTitle: 'AI Coding Arena',
@@ -128,6 +135,13 @@ const translations = {
     light: 'Light',
     dark: 'Dark',
     system: 'System',
+    comment: 'Comment',
+    commentPlaceholder: 'Short comment (optional)',
+    like: 'Like',
+    likes: 'Likes',
+    leaderboard: 'Leaderboard',
+    totalRanking: 'All Projects',
+    noLikesYet: 'No votes yet',
   },
 } as const;
 
@@ -156,7 +170,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, [language]);
 
   const t = (key: TranslationKey, params?: Record<string, string>): string => {
-    let value = translations[language][key] || translations.en[key] || key;
+    let value: string = translations[language][key] || translations.en[key] || key;
     if (params) {
       for (const [k, v] of Object.entries(params)) {
         value = value.replace(`{${k}}`, v);

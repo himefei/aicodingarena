@@ -19,8 +19,19 @@ CREATE TABLE IF NOT EXISTS demos (
   file_r2_key TEXT NOT NULL,
   thumbnail_r2_key TEXT,
   demo_type TEXT NOT NULL DEFAULT 'html' CHECK(demo_type IN ('html', 'python')),
+  comment TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (tab_id) REFERENCES tabs(id) ON DELETE CASCADE
+);
+
+-- Demo Likes: one like per IP per demo
+CREATE TABLE IF NOT EXISTS demo_likes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  demo_id TEXT NOT NULL,
+  ip TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(demo_id, ip),
+  FOREIGN KEY (demo_id) REFERENCES demos(id) ON DELETE CASCADE
 );
 
 -- Model Brands: company/brand identifiers with SVG logos

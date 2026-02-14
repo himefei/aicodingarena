@@ -1115,6 +1115,7 @@ export const POST: APIRoute = async (context) => {
       demo_type: 'html' | 'python';
       code: string;
       thumbnail?: string;
+      comment?: string;
     };
 
     const id = `demo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -1144,8 +1145,8 @@ export const POST: APIRoute = async (context) => {
     }
 
     await env.ARENA_DB.prepare(
-      'INSERT INTO demos (id, tab_id, model_name, model_key, file_r2_key, thumbnail_r2_key, demo_type) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(id, body.tab_id, body.model_name, body.model_key, fileKey, thumbnailKey, body.demo_type).run();
+      'INSERT INTO demos (id, tab_id, model_name, model_key, file_r2_key, thumbnail_r2_key, demo_type, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(id, body.tab_id, body.model_name, body.model_key, fileKey, thumbnailKey, body.demo_type, body.comment || null).run();
 
     const demo = await env.ARENA_DB.prepare('SELECT * FROM demos WHERE id = ?').bind(id).first();
     return jsonResponse(demo, 201);

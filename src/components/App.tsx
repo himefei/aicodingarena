@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LanguageProvider, useLanguage } from '@/lib/language';
 import { ThemeProvider } from '@/lib/theme';
-import { fetchTabs, fetchDemos, fetchModels, fetchBrands, isAuthenticated, verifyToken, type Tab, type Demo } from '@/lib/api';
+import { fetchTabs, fetchDemos, fetchModels, fetchBrands, fetchLikes, toggleLike, isAuthenticated, verifyToken, type Tab, type Demo, type LikeInfo } from '@/lib/api';
 import { useKonamiCode, isKonamiActivated } from '@/hooks/use-konami-code';
 import { setRuntimeModels, setRuntimeBrands } from '@/lib/models';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -14,6 +14,7 @@ import { CompareView } from '@/components/CompareView';
 import { DemoViewer } from '@/components/DemoViewer';
 import { AdminLoginDialog } from '@/components/AdminLoginDialog';
 import { AdminPanel } from '@/components/AdminPanel';
+import { Leaderboard } from '@/components/Leaderboard';
 import { Toaster } from 'sonner';
 import {
   Sword, GearSix, Rows, GridFour,
@@ -27,6 +28,7 @@ function AppInner() {
   const [demos, setDemos] = useState<Demo[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [likes, setLikes] = useState<Record<string, LikeInfo>>({});
 
   // Compare mode
   const [compareMode, setCompareMode] = useState(false);
@@ -75,8 +77,12 @@ function AppInner() {
     if (!activeTabId) return;
     const loadDemos = async () => {
       try {
-        const data = await fetchDemos(activeTabId);
+        const [data, likesData] = await Promise.all([
+          fetchDemos(activeTabId),
+          fetchLikes(activeTabId),
+        ]);
         setDemos(data);
+        setLikes(likesData);
       } catch (e) {
         console.error('Failed to load demos:', e);
         setDemos([]);
@@ -142,6 +148,32 @@ function AppInner() {
   const handleLogout = () => {
     setIsAdmin(false);
     setShowAdmin(false);
+  };
+
+  const handleLike = async (demo: Demo) => {
+    // Optimistic update
+    const current = likes[demo.id] || { count: 0, liked: false };
+    const newLiked = !current.liked;
+    setLikes(prev => ({
+      ...prev,
+      [demo.id]: {
+        count: current.count + (newLiked ? 1 : -1),
+        liked: newLiked,
+      },
+    }));
+    try {
+      const result = await toggleLike(demo.id);
+      setLikes(prev => ({
+        ...prev,
+        [demo.id]: result,
+      }));
+    } catch {
+      // Revert on failure
+      setLikes(prev => ({
+        ...prev,
+        [demo.id]: current,
+      }));
+    }
   };
 
   const filteredDemos = demos;
@@ -293,6 +325,9 @@ function AppInner() {
                 />
               )}
 
+              {/* Leaderboard */}
+              <Leaderboard tabs={tabs} activeTabId={activeTabId} />
+
               {/* Compare hint */}
               <AnimatePresence>
                 {compareMode && (
@@ -347,6 +382,9 @@ function AppInner() {
                         isSelected={!!selectedDemos.find(d => d.id === demo.id)}
                         onToggleCompare={toggleDemoSelection}
                         onClick={() => setViewingDemo(demo)}
+                        likeCount={likes[demo.id]?.count || 0}
+                        liked={likes[demo.id]?.liked || false}
+                        onLike={handleLike}
                       />
                     </motion.div>
                   ))}

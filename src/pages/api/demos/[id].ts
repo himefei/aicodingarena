@@ -40,6 +40,7 @@ export const PUT: APIRoute = async (context) => {
       model_name?: string;
       demo_type?: 'html' | 'python';
       code?: string;
+      comment?: string;
     };
 
     // If new code is provided, re-upload the file to R2
@@ -64,6 +65,7 @@ export const PUT: APIRoute = async (context) => {
     if (body.model_key) { updates.push('model_key = ?'); values.push(body.model_key); }
     if (body.model_name) { updates.push('model_name = ?'); values.push(body.model_name); }
     if (body.demo_type) { updates.push('demo_type = ?'); values.push(body.demo_type); }
+    if (body.comment !== undefined) { updates.push('comment = ?'); values.push(body.comment || null); }
 
     if (updates.length > 0) {
       values.push(id);

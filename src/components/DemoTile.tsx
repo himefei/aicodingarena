@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import type { Demo } from '@/lib/api';
 import { getDemoUrl, getThumbnailUrl } from '@/lib/api';
 import { getModelByKey, getModelLogo } from '@/lib/models';
-import { Plus, Check, Play, FilePy } from '@phosphor-icons/react';
+import { Plus, Check, Play, FilePy, Heart } from '@phosphor-icons/react';
 import { useLanguage } from '@/lib/language';
 
 interface DemoTileProps {
@@ -13,9 +13,12 @@ interface DemoTileProps {
   isSelected: boolean;
   onToggleCompare: (demo: Demo) => void;
   onClick: (demo: Demo) => void;
+  likeCount?: number;
+  liked?: boolean;
+  onLike?: (demo: Demo) => void;
 }
 
-export function DemoTile({ demo, index, compareMode, isSelected, onToggleCompare, onClick }: DemoTileProps) {
+export function DemoTile({ demo, index, compareMode, isSelected, onToggleCompare, onClick, likeCount = 0, liked = false, onLike }: DemoTileProps) {
   const { language } = useLanguage();
   const [isHovered, setIsHovered] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
@@ -147,6 +150,26 @@ export function DemoTile({ demo, index, compareMode, isSelected, onToggleCompare
             {isSelected ? <Check size={16} weight="bold" /> : <Plus size={16} weight="bold" />}
           </motion.button>
         )}
+
+        {/* Like button - bottom right of preview */}
+        {onLike && (
+          <motion.button
+            whileTap={{ scale: 0.85 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onLike(demo);
+            }}
+            className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all"
+            style={{
+              background: liked ? 'rgba(239,68,68,0.9)' : 'rgba(0,0,0,0.5)',
+              color: 'white',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            <Heart size={14} weight={liked ? 'fill' : 'regular'} />
+            {likeCount > 0 && <span>{likeCount}</span>}
+          </motion.button>
+        )}
       </div>
 
       {/* Info bar */}
@@ -171,6 +194,24 @@ export function DemoTile({ demo, index, compareMode, isSelected, onToggleCompare
           <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{dateStr}</div>
         </div>
       </div>
+
+      {/* Comment (conditional) */}
+      {demo.comment && (
+        <div className="px-4 pb-3 -mt-1">
+          <p
+            className="text-xs leading-relaxed"
+            style={{
+              color: 'var(--text-muted)',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {demo.comment}
+          </p>
+        </div>
+      )}
     </motion.div>
   );
 }
