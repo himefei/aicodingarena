@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import type { Demo } from '@/lib/api';
 import { getDemoUrl, getThumbnailUrl } from '@/lib/api';
 import { getModelByKey, getModelLogo } from '@/lib/models';
-import { Plus, Check, Play, FilePy, Heart } from '@phosphor-icons/react';
+import { Plus, Check, Play, FilePy, Heart, Article } from '@phosphor-icons/react';
 import { useLanguage } from '@/lib/language';
 
 interface DemoTileProps {
@@ -123,11 +123,11 @@ export function DemoTile({ demo, index, compareMode, isSelected, onToggleCompare
         <div
           className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-xs font-medium"
           style={{
-            background: demo.demo_type === 'python' ? 'rgba(59,130,246,0.9)' : 'rgba(99,102,241,0.9)',
+            background: demo.demo_type === 'python' ? 'rgba(59,130,246,0.9)' : demo.demo_type === 'markdown' ? 'rgba(16,185,129,0.9)' : 'rgba(99,102,241,0.9)',
             color: 'white',
           }}
         >
-          {demo.demo_type === 'python' ? 'Python' : 'HTML'}
+          {demo.demo_type === 'python' ? 'Python' : demo.demo_type === 'markdown' ? 'Markdown' : 'HTML'}
         </div>
 
         {/* Compare select button */}

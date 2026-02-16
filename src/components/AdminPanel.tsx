@@ -35,7 +35,7 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
   const [uploadTabId, setUploadTabId] = useState('');
   const [uploadModelKey, setUploadModelKey] = useState('');
   const [uploadModelName, setUploadModelName] = useState('');
-  const [uploadType, setUploadType] = useState<'html' | 'python'>('html');
+  const [uploadType, setUploadType] = useState<'html' | 'python' | 'markdown'>('html');
   const [uploadCode, setUploadCode] = useState('');
   const [uploadComment, setUploadComment] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -48,7 +48,7 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
   const [editingDemoId, setEditingDemoId] = useState<string | null>(null);
   const [editDemoTabId, setEditDemoTabId] = useState('');
   const [editDemoModelKey, setEditDemoModelKey] = useState('');
-  const [editDemoType, setEditDemoType] = useState<'html' | 'python'>('html');
+  const [editDemoType, setEditDemoType] = useState<'html' | 'python' | 'markdown'>('html');
   const [editDemoCode, setEditDemoCode] = useState('');
   const [editDemoComment, setEditDemoComment] = useState('');
   const [editingSaving, setEditingSaving] = useState(false);
@@ -140,7 +140,7 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
     setEditingDemoId(demo.id);
     setEditDemoTabId(demo.tab_id);
     setEditDemoModelKey(demo.model_key);
-    setEditDemoType(demo.demo_type as 'html' | 'python');
+    setEditDemoType(demo.demo_type as 'html' | 'python' | 'markdown');
     setEditDemoCode('');
     setEditDemoComment(demo.comment || '');
   };
@@ -440,12 +440,13 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                   <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-muted)' }}>{t('demoType')}</label>
                   <select
                     value={uploadType}
-                    onChange={(e) => setUploadType(e.target.value as 'html' | 'python')}
+                    onChange={(e) => setUploadType(e.target.value as 'html' | 'python' | 'markdown')}
                     className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                     style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   >
                     <option value="html">HTML</option>
                     <option value="python">Python</option>
+                    <option value="markdown">Markdown</option>
                   </select>
                 </div>
               </div>
@@ -456,13 +457,13 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                   <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{t('pasteCode')}</label>
                   <label className="text-xs cursor-pointer transition-colors" style={{ color: 'var(--color-primary)' }}>
                     {t('orUploadFile')}
-                    <input type="file" accept=".html,.htm,.py,.txt" className="hidden" onChange={handleFileUpload} />
+                    <input type="file" accept=".html,.htm,.py,.txt,.md,.markdown" className="hidden" onChange={handleFileUpload} />
                   </label>
                 </div>
                 <textarea
                   value={uploadCode}
                   onChange={(e) => setUploadCode(e.target.value)}
-                  placeholder={uploadType === 'html' ? '<!DOCTYPE html>\n<html>...' : 'import pygame\n...'}
+                  placeholder={uploadType === 'html' ? '<!DOCTYPE html>\n<html>...' : uploadType === 'python' ? 'import pygame\n...' : '# Heading\n\nMarkdown content...'}
                   rows={12}
                   className="w-full px-4 py-3 rounded-xl text-sm font-mono outline-none resize-y"
                   style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
@@ -520,11 +521,11 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                         <div
                           className="px-2 py-0.5 rounded text-xs font-medium"
                           style={{
-                            background: demo.demo_type === 'python' ? 'rgba(59,130,246,0.15)' : 'rgba(99,102,241,0.15)',
-                            color: demo.demo_type === 'python' ? '#3b82f6' : '#6366f1',
+                            background: demo.demo_type === 'python' ? 'rgba(59,130,246,0.15)' : demo.demo_type === 'markdown' ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)',
+                            color: demo.demo_type === 'python' ? '#3b82f6' : demo.demo_type === 'markdown' ? '#10b981' : '#6366f1',
                           }}
                         >
-                          {demo.demo_type}
+                          {demo.demo_type === 'markdown' ? 'Markdown' : demo.demo_type}
                         </div>
                         <div>
                           <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{demo.model_name}</div>
@@ -599,12 +600,13 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                                 <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-muted)' }}>{t('demoType')}</label>
                                 <select
                                   value={editDemoType}
-                                  onChange={(e) => setEditDemoType(e.target.value as 'html' | 'python')}
+                                  onChange={(e) => setEditDemoType(e.target.value as 'html' | 'python' | 'markdown')}
                                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                                   style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                                 >
                                   <option value="html">HTML</option>
                                   <option value="python">Python</option>
+                                  <option value="markdown">Markdown</option>
                                 </select>
                               </div>
                             </div>
@@ -617,13 +619,13 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                                 </label>
                                 <label className="text-xs cursor-pointer transition-colors" style={{ color: 'var(--color-primary)' }}>
                                   {t('orUploadFile')}
-                                  <input type="file" accept=".html,.htm,.py,.txt" className="hidden" onChange={handleEditFileUpload} />
+                                  <input type="file" accept=".html,.htm,.py,.txt,.md,.markdown" className="hidden" onChange={handleEditFileUpload} />
                                 </label>
                               </div>
                               <textarea
                                 value={editDemoCode}
                                 onChange={(e) => setEditDemoCode(e.target.value)}
-                                placeholder={editDemoType === 'html' ? '<!DOCTYPE html>\n<html>...' : 'import pygame\n...'}
+                                placeholder={editDemoType === 'html' ? '<!DOCTYPE html>\n<html>...' : editDemoType === 'python' ? 'import pygame\n...' : '# Heading\n\nMarkdown content...'}
                                 rows={8}
                                 className="w-full px-4 py-3 rounded-xl text-sm font-mono outline-none resize-y"
                                 style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}

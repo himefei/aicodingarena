@@ -1077,6 +1077,125 @@ sys.stderr = OutputCapture()
 </html>`;
 }
 
+/** Wrap raw markdown text into a self-contained HTML page that renders
+ *  Markdown via marked.js and LaTeX via KaTeX, with a polished look. */
+export function wrapMarkdownAsHtml(markdown: string): string {
+  // Escape backticks / template-literal chars inside the markdown
+  const escaped = markdown.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown Demo</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.6.1/github-markdown-light.min.css">
+<style>
+  :root { color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0d1117; color: #c9d1d9; }
+    .markdown-body {
+      color: #c9d1d9;
+      --color-canvas-default: #0d1117;
+      --color-canvas-subtle: #161b22;
+      --color-border-default: #30363d;
+      --color-border-muted: #21262d;
+      --color-fg-default: #c9d1d9;
+      --color-fg-muted: #8b949e;
+    }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3,
+    .markdown-body h4, .markdown-body h5, .markdown-body h6 { color: #e6edf3; }
+    .markdown-body a { color: #58a6ff; }
+    .markdown-body code { background: #161b22; color: #e6edf3; }
+    .markdown-body pre { background: #161b22 !important; }
+    .markdown-body blockquote { border-color: #3b434b; color: #8b949e; }
+    .markdown-body table tr { background: #0d1117; border-color: #30363d; }
+    .markdown-body table tr:nth-child(2n) { background: #161b22; }
+    .markdown-body table th, .markdown-body table td { border-color: #30363d; }
+    .markdown-body hr { background: #21262d; }
+  }
+  body {
+    margin: 0; padding: 32px 16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center;
+    background: #ffffff;
+  }
+  .markdown-body {
+    max-width: 860px; width: 100%;
+    padding: 24px 32px;
+    box-sizing: border-box;
+  }
+  /* KaTeX display-mode centering */
+  .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+  /* Code block styling enhancements */
+  .markdown-body pre code { font-size: 0.9em; line-height: 1.5; }
+</style>
+</head>
+<body>
+<article class="markdown-body" id="content"></article>
+<script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"><\/script>
+<script>
+(function() {
+  const raw = \`${escaped}\`;
+
+  // --- LaTeX pre-processing ---
+  // Replace display math $$...$$ and \\[...\\] with placeholders
+  const mathBlocks = [];
+  let processed = raw;
+
+  // Display math: $$ ... $$
+  processed = processed.replace(/\$\$([\\s\\S]*?)\$\$/g, (_, tex) => {
+    const idx = mathBlocks.length;
+    mathBlocks.push({ tex: tex.trim(), display: true });
+    return '%%MATH_BLOCK_' + idx + '%%';
+  });
+
+  // Display math: \\[ ... \\]
+  processed = processed.replace(/\\\\\\[([\\s\\S]*?)\\\\\\]/g, (_, tex) => {
+    const idx = mathBlocks.length;
+    mathBlocks.push({ tex: tex.trim(), display: true });
+    return '%%MATH_BLOCK_' + idx + '%%';
+  });
+
+  // Inline math: $...$ (not $$)
+  processed = processed.replace(/(?<!\$)\$(?!\$)([^\$\\n]+?)(?<!\$)\$(?!\$)/g, (_, tex) => {
+    const idx = mathBlocks.length;
+    mathBlocks.push({ tex: tex.trim(), display: false });
+    return '%%MATH_BLOCK_' + idx + '%%';
+  });
+
+  // Inline math: \\( ... \\)
+  processed = processed.replace(/\\\\\\(([\\s\\S]*?)\\\\\\)/g, (_, tex) => {
+    const idx = mathBlocks.length;
+    mathBlocks.push({ tex: tex.trim(), display: false });
+    return '%%MATH_BLOCK_' + idx + '%%';
+  });
+
+  // --- Render Markdown ---
+  let html = marked.parse(processed, { gfm: true, breaks: false });
+
+  // --- Restore math with KaTeX ---
+  html = html.replace(/%%MATH_BLOCK_(\\d+)%%/g, (_, idx) => {
+    const block = mathBlocks[parseInt(idx)];
+    try {
+      return katex.renderToString(block.tex, {
+        displayMode: block.display,
+        throwOnError: false,
+        trust: true,
+      });
+    } catch(e) {
+      return '<code>' + block.tex + '</code>';
+    }
+  });
+
+  document.getElementById('content').innerHTML = html;
+})();
+<\/script>
+</body>
+</html>`;
+}
+
 export const GET: APIRoute = async (context) => {
   const env = getEnv(context.locals);
   const url = new URL(context.request.url);
@@ -1112,7 +1231,7 @@ export const POST: APIRoute = async (context) => {
       tab_id: string;
       model_key: string;
       model_name: string;
-      demo_type: 'html' | 'python';
+      demo_type: 'html' | 'python' | 'markdown';
       code: string;
       thumbnail?: string;
       comment?: string;
@@ -1124,6 +1243,8 @@ export const POST: APIRoute = async (context) => {
     let htmlContent: string;
     if (body.demo_type === 'python') {
       htmlContent = wrapPythonAsHtml(body.code);
+    } else if (body.demo_type === 'markdown') {
+      htmlContent = wrapMarkdownAsHtml(body.code);
     } else {
       htmlContent = body.code;
     }

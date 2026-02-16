@@ -38,18 +38,20 @@ export const PUT: APIRoute = async (context) => {
       tab_id?: string;
       model_key?: string;
       model_name?: string;
-      demo_type?: 'html' | 'python';
+      demo_type?: 'html' | 'python' | 'markdown';
       code?: string;
       comment?: string;
     };
 
     // If new code is provided, re-upload the file to R2
     if (body.code) {
-      const { wrapPythonAsHtml } = await import('./index');
+      const { wrapPythonAsHtml, wrapMarkdownAsHtml } = await import('./index');
       const demoType = body.demo_type || 'html';
       let htmlContent: string;
       if (demoType === 'python') {
         htmlContent = wrapPythonAsHtml(body.code);
+      } else if (demoType === 'markdown') {
+        htmlContent = wrapMarkdownAsHtml(body.code);
       } else {
         htmlContent = body.code;
       }

@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS demos (
   model_key TEXT NOT NULL,
   file_r2_key TEXT NOT NULL,
   thumbnail_r2_key TEXT,
-  demo_type TEXT NOT NULL DEFAULT 'html' CHECK(demo_type IN ('html', 'python')),
+  demo_type TEXT NOT NULL DEFAULT 'html' CHECK(demo_type IN ('html', 'python', 'markdown')),
   comment TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (tab_id) REFERENCES tabs(id) ON DELETE CASCADE

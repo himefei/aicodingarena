@@ -18,6 +18,7 @@ export function DemoViewer({ demo, onClose }: DemoViewerProps) {
   const demoUrl = getDemoUrl(demo);
   const logoSrc = getModelLogo(demo.model_key);
   const isPython = demo.demo_type === 'python';
+  const isMarkdown = demo.demo_type === 'markdown';
   const [pythonLoaded, setPythonLoaded] = useState(false);
   const [showToolbar, setShowToolbar] = useState(false);
 
@@ -101,11 +102,11 @@ export function DemoViewer({ demo, onClose }: DemoViewerProps) {
           <span
             className="text-xs px-2 py-0.5 rounded-md"
             style={{
-              background: demo.demo_type === 'python' ? 'rgba(59,130,246,0.15)' : 'rgba(99,102,241,0.15)',
-              color: demo.demo_type === 'python' ? '#3b82f6' : '#6366f1',
+              background: demo.demo_type === 'python' ? 'rgba(59,130,246,0.15)' : demo.demo_type === 'markdown' ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)',
+              color: demo.demo_type === 'python' ? '#3b82f6' : demo.demo_type === 'markdown' ? '#10b981' : '#6366f1',
             }}
           >
-            {demo.demo_type === 'python' ? 'Python' : 'HTML'}
+            {demo.demo_type === 'python' ? 'Python' : demo.demo_type === 'markdown' ? 'Markdown' : 'HTML'}
           </span>
         </div>
 

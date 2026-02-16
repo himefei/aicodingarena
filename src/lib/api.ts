@@ -56,7 +56,7 @@ export interface Demo {
   model_key: string;
   file_r2_key: string;
   thumbnail_r2_key: string | null;
-  demo_type: 'html' | 'python';
+  demo_type: 'html' | 'python' | 'markdown';
   comment: string | null;
   created_at: string;
 }
@@ -72,7 +72,7 @@ export interface UploadPayload {
   tab_id: string;
   model_key: string;
   model_name: string;
-  demo_type: 'html' | 'python';
+  demo_type: 'html' | 'python' | 'markdown';
   code: string;
   thumbnail?: string; // base64
   comment?: string;
@@ -85,7 +85,7 @@ export interface UpdateDemoPayload {
   tab_id?: string;
   model_key?: string;
   model_name?: string;
-  demo_type?: 'html' | 'python';
+  demo_type?: 'html' | 'python' | 'markdown';
   code?: string;
   comment?: string;
 }
