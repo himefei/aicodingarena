@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import type { Demo } from '@/lib/api';
 import { getDemoUrl } from '@/lib/api';
@@ -12,6 +13,15 @@ interface CompareViewProps {
 
 export function CompareView({ demos, onClose }: CompareViewProps) {
   const { t } = useLanguage();
+  const [isVertical, setIsVertical] = useState(() =>
+    typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsVertical(window.innerHeight > window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   return (
     <motion.div
@@ -45,7 +55,7 @@ export function CompareView({ demos, onClose }: CompareViewProps) {
       </div>
 
       {/* Compare grid */}
-      <div className="flex-1 flex min-h-0">
+      <div className={`flex-1 flex min-h-0 ${isVertical ? 'flex-col' : 'flex-row'}`}>
         {demos.map((demo, idx) => {
           const model = getModelByKey(demo.model_key);
           const color = model?.color || '#6366f1';
@@ -54,12 +64,13 @@ export function CompareView({ demos, onClose }: CompareViewProps) {
           return (
             <motion.div
               key={demo.id}
-              initial={{ opacity: 0, x: (idx - 1) * 30 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, ...(isVertical ? { y: (idx - 1) * 30 } : { x: (idx - 1) * 30 }) }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
               transition={{ delay: idx * 0.1 }}
-              className="flex-1 flex flex-col min-w-0"
+              className="flex-1 flex flex-col min-w-0 min-h-0"
               style={{
-                borderRight: idx < demos.length - 1 ? '1px solid var(--border)' : undefined,
+                borderRight: !isVertical && idx < demos.length - 1 ? '1px solid var(--border)' : undefined,
+                borderBottom: isVertical && idx < demos.length - 1 ? '1px solid var(--border)' : undefined,
               }}
             >
               {/* Model label */}
