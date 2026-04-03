@@ -6,6 +6,8 @@ import { getModelByKey, getModelLogo } from '@/lib/models';
 import { useLanguage } from '@/lib/language';
 import { ArrowLeft, X } from '@phosphor-icons/react';
 
+type CompareOrientationMode = 'auto' | 'vertical' | 'horizontal';
+
 interface CompareViewProps {
   demos: Demo[];
   onClose: () => void;
@@ -13,15 +15,23 @@ interface CompareViewProps {
 
 export function CompareView({ demos, onClose }: CompareViewProps) {
   const { t } = useLanguage();
-  const [isVertical, setIsVertical] = useState(() =>
+  const [orientationMode, setOrientationMode] = useState<CompareOrientationMode>('auto');
+  const [autoIsVertical, setAutoIsVertical] = useState(() =>
     typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false
   );
+  const isVertical = orientationMode === 'auto' ? autoIsVertical : orientationMode === 'vertical';
 
   useEffect(() => {
-    const onResize = () => setIsVertical(window.innerHeight > window.innerWidth);
+    const onResize = () => setAutoIsVertical(window.innerHeight > window.innerWidth);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  const orientationOptions: Array<{ key: CompareOrientationMode; label: string }> = [
+    { key: 'auto', label: t('autoLayout') },
+    { key: 'vertical', label: t('verticalLayout') },
+    { key: 'horizontal', label: t('horizontalLayout') },
+  ];
 
   return (
     <motion.div
@@ -33,7 +43,7 @@ export function CompareView({ demos, onClose }: CompareViewProps) {
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-6 py-3 flex-shrink-0"
+        className="flex items-center justify-between gap-3 px-4 py-3 flex-shrink-0 sm:px-6"
         style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}
       >
         <motion.button
@@ -49,9 +59,63 @@ export function CompareView({ demos, onClose }: CompareViewProps) {
         <h2 className="text-sm font-bold gradient-text" style={{ fontFamily: 'var(--font-display)' }}>
           {t('compareMode')}
         </h2>
-        <button onClick={onClose} style={{ color: 'var(--text-muted)' }}>
-          <X size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <div
+            className="hidden sm:flex items-center gap-1 rounded-2xl p-1"
+            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
+            role="group"
+            aria-label={t('compareLayout')}
+          >
+            {orientationOptions.map((option) => {
+              const isActive = orientationMode === option.key;
+
+              return (
+                <motion.button
+                  key={option.key}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setOrientationMode(option.key)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors"
+                  style={{
+                    background: isActive ? 'var(--color-primary)' : 'transparent',
+                    color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                  }}
+                >
+                  {option.label}
+                </motion.button>
+              );
+            })}
+          </div>
+          <button onClick={onClose} style={{ color: 'var(--text-muted)' }} aria-label={t('close')}>
+            <X size={20} />
+          </button>
+        </div>
+      </div>
+
+      <div
+        className="sm:hidden flex items-center gap-1 px-4 py-2 overflow-x-auto"
+        style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)' }}
+        role="group"
+        aria-label={t('compareLayout')}
+      >
+        {orientationOptions.map((option) => {
+          const isActive = orientationMode === option.key;
+
+          return (
+            <motion.button
+              key={option.key}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setOrientationMode(option.key)}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors"
+              style={{
+                background: isActive ? 'var(--color-primary)' : 'var(--bg)',
+                color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                border: `1px solid ${isActive ? 'var(--color-primary)' : 'var(--border)'}`,
+              }}
+            >
+              {option.label}
+            </motion.button>
+          );
+        })}
       </div>
 
       {/* Compare grid */}
